@@ -1,0 +1,3 @@
+# Note that eventually I'll move this to .env, but it's here for simplicity atm.
+[global.databases]
+postgres_database = { url = "postgres://username:password@server/db_name" }
