@@ -1,10 +1,16 @@
 use crate::schema::*;
+use crate::{JWT_EXPIRY_TIME_HOURS, JWT_SECRET};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use rocket::http::Status;
+use rocket::http::{ContentType, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::serde::{Deserialize, Serialize};
-use crate::{JWT_SECRET, JWT_EXPIRY_TIME_HOURS};
+use std::io::Cursor;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+fn wrap(s: String) -> String {
+    format!("{{\"data\": {}}}", s)
+}
+
 /// A user stored in the database
 #[derive(Queryable, Serialize, Clone)]
 pub struct User {
@@ -36,27 +42,59 @@ pub struct UserCredentials {
     pub pwd: String,
 }
 
+#[derive(Debug)]
+pub struct Response {
+    body: String,
+    status: Status,
+}
+
 /// Represents a basic JSON response from the api
-#[derive(Serialize)]
-pub struct Response<T>
+pub struct ResponseBuilder<T>
 where
     T: Serialize,
 {
     pub data: T,
+    pub status: Status,
 }
 
-impl<T> Response<T>
+impl<T> ResponseBuilder<T>
 where
     T: Serialize,
 {
-    pub fn to_json(self) -> Result<String, serde_json::Error> {
-        serde_json::to_string(&self)
+    pub fn build(self) -> Response {
+        let body = match serde_json::to_string(&self.data) {
+            Ok(b) => b,
+            Err(e) => {
+                return Response {
+                    body: wrap(format!("Failed to serialize obejct to json {}", e.to_string())),
+                    status: Status::InternalServerError,
+                }
+            }
+        };
+        Response {
+            body: wrap(body),
+            status: self.status,
+        }
     }
 }
 
-impl Default for Response<String> {
-    fn default() -> Response<String> {
-        Response { data: "".into() }
+impl Default for ResponseBuilder<String> {
+    fn default() -> ResponseBuilder<String> {
+        ResponseBuilder {
+            data: "".into(),
+            status: Status::Ok,
+        }
+    }
+}
+
+#[rocket::async_trait]
+impl<'r> rocket::response::Responder<'r, 'static> for Response {
+    fn respond_to(self, _: &'r Request<'_>) -> rocket::response::Result<'static> {
+        rocket::response::Response::build()
+            .header(ContentType::new("application", "json"))
+            .status(self.status)
+            .sized_body(self.body.len(), Cursor::new(self.body))
+            .ok()
     }
 }
 
@@ -74,8 +112,10 @@ pub struct Claims {
 impl Claims {
     /// Create a new JWT, when provided with the id of the user.
     pub fn new_token(sub: i32) -> String {
-
-        let curr_time = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards!").as_secs() as usize;    
+        let curr_time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards!")
+            .as_secs() as usize;
         let c: Claims = Claims {
             exp: curr_time + JWT_EXPIRY_TIME_HOURS * 60 * 60,
             iat: curr_time,
@@ -92,19 +132,19 @@ impl Claims {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for Claims {
-    type Error = String;
-    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, String> {
+    type Error = Response;
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Response> {
         //TODO improve the headers here, so we will check for Authorization along with Authorisation.
         //Should help the americanally challenged of us...
         let auth_header = req.headers().get_one("Authorisation");
         if auth_header.is_none() {
             return request::Outcome::Failure((
                 Status::Unauthorized,
-                Response {
+                ResponseBuilder {
                     data: "Authorisation Header Not Present",
+                    status: Status::Unauthorized,
                 }
-                .to_json()
-                .unwrap(),
+                .build(),
             ));
         }
         match decode::<Claims>(
@@ -112,14 +152,17 @@ impl<'r> FromRequest<'r> for Claims {
             &DecodingKey::from_secret(JWT_SECRET.as_ref()), //HACK this secret should be loaded in from env
             &Validation::default(),
         ) {
-            Ok(t) => request::Outcome::Success(t.claims),
+            Ok(t) => {
+                //TODO validate the user hasn't been deleted (check db)
+                request::Outcome::Success(t.claims)
+            },
             Err(_) => request::Outcome::Failure((
                 Status::Unauthorized,
-                Response {
+                ResponseBuilder {
                     data: "Invalid Auth Token",
+                    status: Status::Unauthorized,
                 }
-                .to_json()
-                .unwrap(),
+                .build(),
             )),
         }
     }
