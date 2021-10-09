@@ -15,6 +15,11 @@ mod schema;
 use diesel::prelude::*;
 use rocket::http::Status;
 use rocket::serde::json::Json;
+
+//Temporary constants during development, these will be moved to env vars
+const JWT_EXPIRY_TIME_HOURS:usize = 24*10; //hours
+const JWT_SECRET: &str = "my_secret.png";
+
 /// Database connection
 #[rocket_sync_db_pools::database("postgres_database")]
 struct UsersDbConn(diesel::PgConnection);
@@ -27,20 +32,17 @@ struct UsersDbConn(diesel::PgConnection);
 /// POST /api/va/highscore, to add a new score - must contain information about the user
 
 /// TODO General todos
-/// implement JWT system
 /// Move common DB requests (such as looking up a user) into a framework under common.rs to avoid duplicate code.
 
-/// Return information about a student
-#[get("/api/v1/student/<search_id>", format = "application/json")]
-async fn get_student(search_id: i32, conn: UsersDbConn) -> (Status, String) {
-    //TODO authentication here
-
+/// Return information about the student
+#[get("/api/v1/student")]
+async fn get_student(token: models::Claims, conn: UsersDbConn) -> (Status, String) {
     //Load the item from the db, if it exists
     use crate::schema::users::dsl::*;
     let r: Option<crate::models::User> = conn
         .run(move |c| {
             let r = users
-                .filter(id.eq(search_id))
+                .filter(id.eq(token.sub))
                 .limit(1)
                 .load::<crate::models::User>(c);
             if let Ok(mut v) = r {
@@ -114,9 +116,9 @@ async fn login_student(
             .unwrap(),
         );
     }
-
+    let r = r.unwrap();
     //Check that their password hash matches
-    let hash_valid = match common::compare_hashed_strings(login_information.pwd, r.unwrap().pwd) {
+    let hash_valid = match common::compare_hashed_strings(login_information.pwd, r.pwd) {
         Ok(h) => h,
         Err(e) => {
             return (
@@ -130,21 +132,24 @@ async fn login_student(
         }
     };
 
-    if ! hash_valid {
+    if !hash_valid {
         return (
             Status::BadRequest,
             models::Response {
-                data: "Incorrect Password or Username"
+                data: "Incorrect Password or Username",
             }
             .to_json()
             .unwrap(),
         );
     }
 
-    //TODO return useful login token here, for now just tell them they're cool.
     return (
-        Status::Created,
-        models::Response { data: "Logged In" }.to_json().unwrap(),
+        Status::Ok,
+        models::Response {
+            data: models::Claims::new_token(r.id),
+        }
+        .to_json()
+        .unwrap(),
     );
 }
 
@@ -238,27 +243,52 @@ async fn create_student(
         );
     }
 
-    //TODO Return valid token
     return (
         Status::Created,
         models::Response {
-            data: "Account Created",
+            data: models::Claims::new_token(r.unwrap().id),
         }
         .to_json()
         .unwrap(),
     );
 }
 
-#[delete("/api/v1/student/<user_id>", format = "application/json")]
-async fn delete_student(user_id: i32, conn: UsersDbConn) -> (Status, String) {
-    //TODO: Authentication
+#[delete("/api/v1/student")]
+async fn delete_student(token: models::Claims, conn: UsersDbConn) -> (Status, String) {
+    //Check the user exists
+    use crate::schema::users::dsl::*;
+    let usr_id = token.sub.clone();
+    let r: Option<crate::models::User> = conn
+        .run(move |c| {
+            let r = users
+                .filter(id.eq(usr_id))
+                .limit(1)
+                .load::<crate::models::User>(c);
+            if let Ok(mut v) = r {
+                if v.is_empty() {
+                    return None;
+                }
+                return Some(v.remove(0));
+            }
+            return None;
+        })
+        .await;
+
+    if r.is_none() {
+        return (
+            Status::BadRequest,
+            models::Response {
+                data: "User Does Not Exist",
+            }
+            .to_json()
+            .unwrap(),
+        );
+    }
 
     //Delete student from db
-    use crate::schema::users::dsl::*;
-    let r: Result<crate::models::User, diesel::result::Error> = conn.run(move |c| {
-        diesel::delete(users.filter(id.eq(user_id)))
-            .get_result(c)
-    }).await;
+    let r: Result<crate::models::User, diesel::result::Error> = conn
+        .run(move |c| diesel::delete(users.filter(id.eq(token.sub))).get_result(c))
+        .await;
 
     if let Err(e) = r {
         return (
@@ -278,18 +308,16 @@ async fn delete_student(user_id: i32, conn: UsersDbConn) -> (Status, String) {
         }
         .to_json()
         .unwrap(),
-    )
+    );
 }
 
-#[get("/api/v1/highscores", format = "application/json")]
+#[get("/api/v1/highscores")]
 async fn get_highscores(conn: UsersDbConn) -> (Status, String) {
-    //TODO allow params for pagination
+    //TODO allow params for pagination, and selection of all scores from a specific user
     use crate::schema::scores::dsl::*;
-    let r: Result<Vec<models::Score>, diesel::result::Error> = conn.run(move |c| {
-        scores
-            .limit(50)
-            .load::<crate::models::Score>(c)
-    }).await;
+    let r: Result<Vec<models::Score>, diesel::result::Error> = conn
+        .run(move |c| scores.limit(50).load::<crate::models::Score>(c))
+        .await;
     if let Err(e) = r {
         return (
             Status::InternalServerError,
@@ -298,23 +326,52 @@ async fn get_highscores(conn: UsersDbConn) -> (Status, String) {
             }
             .to_json()
             .unwrap(),
-        )
+        );
     }
     return (
         Status::Ok,
-        models::Response {
-            data: r.unwrap()
-        }
-        .to_json()
-        .unwrap()
-    )
+        models::Response { data: r.unwrap() }.to_json().unwrap(),
+    );
 }
 
-#[post("/api/v1/highscores", data = "<new_score>", format = "application/json")]
-async fn add_score(new_score: Json<models::NewScore>, conn: UsersDbConn) {
-    //TODO authentication
-    
-    
+#[post(
+    "/api/v1/highscores",
+    data = "<new_score>",
+    format = "application/json"
+)]
+async fn add_score(token: models::Claims, new_score: Json<models::NewScore>, conn: UsersDbConn) -> (Status, String) {
+    let new_score = new_score.into_inner();
+    //Assign the user id
+    let new_score = models::Score {
+        id: 0, //doesn't matter, is automatically assigned in the schema
+        usr_id: token.sub,
+        score: new_score.score,
+    };
+
+    use schema::scores;
+    let r: Result<_, diesel::result::Error> = conn
+        .run(move |c| {
+            diesel::insert_into(scores::table)
+                .values(new_score)
+                .execute(c)
+        })
+        .await;
+
+    if let Err(e) = r {
+        return (
+            Status::InternalServerError,
+            models::Response {
+                data: format!("Failed to insert into server {}", e.to_string()),
+            }
+            .to_json()
+            .unwrap(),
+        );
+    }
+
+    return (
+        Status::Created,
+        models::Response { data: "" }.to_json().unwrap(),
+    );
 }
 
 /// Serve docs about the api

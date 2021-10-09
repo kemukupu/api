@@ -15,8 +15,13 @@ pub fn hash_string_with_salt(s: String) -> Result<String, argon2::password_hash:
 
 /// A function which checks whether the first string can be hashed into the second string.
 /// Returns a boolean true if they are the same, and false otherwise.
-pub fn compare_hashed_strings(orignal: String, hashed: String) -> Result<bool, argon2::password_hash::Error> {
+pub fn compare_hashed_strings(
+    orignal: String,
+    hashed: String,
+) -> Result<bool, argon2::password_hash::Error> {
     let argon2 = Argon2::default();
     let parsed_hash = PasswordHash::new(&hashed)?;
-    Ok(argon2.verify_password(orignal.as_bytes(), &parsed_hash).is_ok())
+    Ok(argon2
+        .verify_password(orignal.as_bytes(), &parsed_hash)
+        .is_ok())
 }

@@ -16,7 +16,4 @@ table! {
 
 joinable!(scores -> users (usr_id));
 
-allow_tables_to_appear_in_same_query!(
-    scores,
-    users,
-);
+allow_tables_to_appear_in_same_query!(scores, users,);
