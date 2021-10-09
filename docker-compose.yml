@@ -1,12 +1,12 @@
 version: '3'
 services:
-  traefik:
-    container_name: traefik
+  kemu-traefik:
+    container_name: kemu-traefik
     image: traefik:v2.5
     privileged: true
     depends_on:
-      - api
-      - db
+      - kemu-api
+      - kemu-db
     command:
       - --api.insecure=true
       - --providers.docker=true
@@ -29,24 +29,24 @@ services:
     ports:
       - 443:443
       - 80:80
-      - 127.0.0.1:9091:8080
+      - 127.0.0.1:9092:8080
 
     volumes:
       - ./letsencrypt:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik-dynamic.yml:/etc/traefik/traefik-dynamic.yml
 
-  api:
-    container_name: api
+  kemu-api:
+    container_name: kemu-api
     build: ./
     restart: always
     depends_on:
-      - db
+      - kemu-db
     environment:
       - ROCKET_PORT=3000
       - ROCKET_ADDRESS=0.0.0.0
       - BROWSER_BASE_URL=https://${DOMAIN}
-      - ROCKET_DATABASES={postgres_database={url=postgres://api:${DB_PASS}/api}}
+      - ROCKET_DATABASES={postgres_database={url=postgres://api:${DB_PASS}/@kemu-db:5432/api}}
       - JWT_EXPIRY_HOURS=${JWT_EXPIRY_HOURS}
       - JWT_SECRET=${JWT_SECRET}
       
@@ -54,10 +54,10 @@ services:
       - traefik.enable=true
       - traefik.http.routers.api.rule=Host(`${DOMAIN}`)
       - traefik.http.routers.api.entrypoints=websecure
-      - traefik.http.routers.api.middlewares=security-headers@file, api-headers@file
+      - traefik.http.routers.api.middlewares=security-headers@file
 
   db:
-    container_name: db
+    container_name: kemu-db
     image: postgres:alpine
     restart: always
     environment:

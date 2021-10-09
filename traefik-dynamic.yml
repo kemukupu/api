@@ -21,7 +21,3 @@ http:
         contentTypeNosniff: true
         referrerPolicy: no-referrer
         permissionsPolicy: none
-
-    api-headers:
-      headers:
-        contentSecurityPolicy: default-src 'none'
