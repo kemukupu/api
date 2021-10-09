@@ -27,6 +27,7 @@ dependencies = [
  "argon2",
  "diesel",
  "jsonwebtoken",
+ "lazy_static",
  "pretty_env_logger",
  "rand_core",
  "rocket",

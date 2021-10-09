@@ -1,11 +1,11 @@
 use crate::schema::*;
-use crate::{JWT_EXPIRY_TIME_HOURS, JWT_SECRET};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rocket::http::{ContentType, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::serde::{Deserialize, Serialize};
 use std::io::Cursor;
 use std::time::{SystemTime, UNIX_EPOCH};
+use crate::{JWT_SECRET, JWT_EXPIRY_TIME_HOURS};
 
 fn wrap(s: String) -> String {
     format!("{{\"data\": {}}}", s)
@@ -117,14 +117,14 @@ impl Claims {
             .expect("Time went backwards!")
             .as_secs() as usize;
         let c: Claims = Claims {
-            exp: curr_time + JWT_EXPIRY_TIME_HOURS * 60 * 60,
+            exp: curr_time + *JWT_EXPIRY_TIME_HOURS * 60 * 60,
             iat: curr_time,
             sub,
         };
         encode(
             &Header::default(),
             &c,
-            &EncodingKey::from_secret(JWT_SECRET.as_ref()),
+            &EncodingKey::from_secret((*JWT_SECRET).as_ref()),
         )
         .unwrap() // HACK this secret should be loaded in from env
     }
@@ -147,9 +147,10 @@ impl<'r> FromRequest<'r> for Claims {
                 .build(),
             ));
         }
+        
         match decode::<Claims>(
             &auth_header.unwrap(),
-            &DecodingKey::from_secret(JWT_SECRET.as_ref()), //HACK this secret should be loaded in from env
+            &DecodingKey::from_secret((*JWT_SECRET).as_ref()),
             &Validation::default(),
         ) {
             Ok(t) => {

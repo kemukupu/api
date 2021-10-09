@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use models::ResponseBuilder;
 use rocket::fs::NamedFile;
 
 #[macro_use]
@@ -15,24 +16,26 @@ mod schema;
 use diesel::prelude::*;
 use rocket::http::Status;
 use rocket::serde::json::Json;
-
-//Temporary constants during development, these will be moved to env vars
-const JWT_EXPIRY_TIME_HOURS: usize = 24 * 10; //hours
-const JWT_SECRET: &str = "my_secret.png";
-
+use std::env::var;
+use lazy_static::lazy_static;
 /// Database connection
 #[rocket_sync_db_pools::database("postgres_database")]
 struct UsersDbConn(diesel::PgConnection);
 
-/// Thinking about endpoints
-/// GET api/v1/student/{id}, request information about a user, must contain AUTH header with their token.
-/// POST api/v1/student/login, to request an access (JWT) token, must attach login details in body
-/// DELETE api/v1/student/{id}, to remove a user
-/// GET api/v1/highscores, to request a list of all the high scores
-/// POST /api/va/highscore, to add a new score - must contain information about the user
+// Thinking about endpoints
+// GET api/v1/student/{id}, request information about a user, must contain AUTH header with their token.
+// POST api/v1/student/login, to request an access (JWT) token, must attach login details in body
+// DELETE api/v1/student/{id}, to remove a user
+// GET api/v1/highscores, to request a list of all the high scores
+// POST /api/va/highscore, to add a new score - must contain information about the user
 
-/// TODO General todos
-/// Move common DB requests (such as looking up a user) into a framework under common.rs to avoid duplicate code.
+// TODO General todos
+// Move common DB requests (such as looking up a user) into a framework under common.rs to avoid duplicate code.
+
+lazy_static! {
+    static ref JWT_SECRET: String = var("JWT_SECRET").unwrap();
+    static ref JWT_EXPIRY_TIME_HOURS: usize = var("JWT_EXPIRY_TIME_HOURS").unwrap().parse().unwrap();
+}
 
 /// Return information about the student
 #[get("/api/v1/student")]
@@ -329,15 +332,19 @@ async fn add_score(
 }
 
 /// Serve docs about the api
-#[get("/api/v1/docs")]
+#[get("/docs")]
 fn docs() {
     //TODO
 }
 
 /// Returns the current health status of the database
 #[get("/health")]
-fn health() -> String {
-    "Good".into()
+fn health() -> models::Response {
+    //TODO
+    ResponseBuilder {
+        data: "Online",
+        status: Status::Ok
+    }.build()
 }
 
 /// Handle the serving of any static resources for various pages

@@ -43,16 +43,16 @@ services:
     depends_on:
       - db
     environment:
-      - PORT=3000
-      - HOST=0.0.0.0
-      - DB_ADDRESS=${DB_ADDRESS}
-      - DB_PASS=${DB_PASS}
-      - DB_USER=${DB_USER}
-      - DB_PORT=${DB_PORT}
+      - ROCKET_PORT=3000
+      - ROCKET_ADDRESS=0.0.0.0
       - BROWSER_BASE_URL=https://${DOMAIN}
+      - ROCKET_DATABASES={postgres_database={url=postgres://api:${DB_PASS}/api}}
+      - JWT_EXPIRY_HOURS=${JWT_EXPIRY_HOURS}
+      - JWT_SECRET=${JWT_SECRET}
+      
     labels:
       - traefik.enable=true
-      - traefik.http.routers.api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)
+      - traefik.http.routers.api.rule=Host(`${DOMAIN}`)
       - traefik.http.routers.api.entrypoints=websecure
       - traefik.http.routers.api.middlewares=security-headers@file, api-headers@file
 
@@ -68,5 +68,5 @@ services:
       - api-pgdata:/var/lib/postgresql/data
 
 volumes:
-  fsp-pgdata:
+  api-pgdata:
     external: true
