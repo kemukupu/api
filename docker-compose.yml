@@ -51,6 +51,7 @@ services:
       - ROCKET_DATABASES={postgres_database={url=postgres://api:${DB_PASS}@kemu-db:5432/api}}
       - JWT_EXPIRY_HOURS=${JWT_EXPIRY_HOURS}
       - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=postgres://api:${DB_PASS}@kemu-db:5432/api # This seems like a duplicate, but it is needed to automate migrations
       
     labels:
       - traefik.enable=true

@@ -11,13 +11,14 @@ extern crate diesel;
 mod common;
 mod error;
 mod models;
+#[rustfmt::skip]
 mod schema;
 
 use diesel::prelude::*;
+use lazy_static::lazy_static;
 use rocket::http::Status;
 use rocket::serde::json::Json;
 use std::env::var;
-use lazy_static::lazy_static;
 /// Database connection
 #[rocket_sync_db_pools::database("postgres_database")]
 struct UsersDbConn(diesel::PgConnection);
@@ -34,7 +35,8 @@ struct UsersDbConn(diesel::PgConnection);
 
 lazy_static! {
     static ref JWT_SECRET: String = var("JWT_SECRET").unwrap();
-    static ref JWT_EXPIRY_TIME_HOURS: usize = var("JWT_EXPIRY_TIME_HOURS").unwrap().parse().unwrap();
+    static ref JWT_EXPIRY_TIME_HOURS: usize =
+        var("JWT_EXPIRY_TIME_HOURS").unwrap().parse().unwrap();
 }
 
 /// Return information about the student
@@ -343,8 +345,9 @@ fn health() -> models::Response {
     //TODO
     ResponseBuilder {
         data: "Online",
-        status: Status::Ok
-    }.build()
+        status: Status::Ok,
+    }
+    .build()
 }
 
 /// Handle the serving of any static resources for various pages

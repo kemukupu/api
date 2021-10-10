@@ -1,11 +1,11 @@
 use crate::schema::*;
+use crate::{JWT_EXPIRY_TIME_HOURS, JWT_SECRET};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rocket::http::{ContentType, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::serde::{Deserialize, Serialize};
 use std::io::Cursor;
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::{JWT_SECRET, JWT_EXPIRY_TIME_HOURS};
 
 fn wrap(s: String) -> String {
     format!("{{\"data\": {}}}", s)
@@ -66,7 +66,10 @@ where
             Ok(b) => b,
             Err(e) => {
                 return Response {
-                    body: wrap(format!("Failed to serialize obejct to json {}", e.to_string())),
+                    body: wrap(format!(
+                        "Failed to serialize obejct to json {}",
+                        e.to_string()
+                    )),
                     status: Status::InternalServerError,
                 }
             }
@@ -147,7 +150,7 @@ impl<'r> FromRequest<'r> for Claims {
                 .build(),
             ));
         }
-        
+
         match decode::<Claims>(
             &auth_header.unwrap(),
             &DecodingKey::from_secret((*JWT_SECRET).as_ref()),
@@ -156,7 +159,7 @@ impl<'r> FromRequest<'r> for Claims {
             Ok(t) => {
                 //TODO validate the user hasn't been deleted (check db)
                 request::Outcome::Success(t.claims)
-            },
+            }
             Err(_) => request::Outcome::Failure((
                 Status::Unauthorized,
                 ResponseBuilder {
