@@ -7,6 +7,7 @@ services:
     depends_on:
       - kemu-api
       - kemu-db
+      - kemu-frontend
     command:
       - --api.insecure=true
       - --providers.docker=true
@@ -36,8 +37,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik-dynamic.yml:/etc/traefik/traefik-dynamic.yml
 
-    frontend:
-    container_name: frontend
+  kemu-frontend:
+    container_name: kemu-frontend
     build: ./website
     restart: always
     environment:
