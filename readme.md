@@ -11,5 +11,7 @@ nano .env #Update required configuration options
 
 docker volume create api-pgdata
 
+chmod +x ./initalize_server.sh
+
 docker-compose --env-file .env up
 ```

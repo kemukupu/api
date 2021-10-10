@@ -16,4 +16,4 @@ ENV ROCKET_PORT 3000
 
 EXPOSE 3000
 
-ENTRYPOINT ["/app/docker_entrypoint.sh"]
+ENTRYPOINT ["/app/initalize_server.sh"]
