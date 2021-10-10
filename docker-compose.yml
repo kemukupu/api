@@ -38,7 +38,9 @@ services:
 
   kemu-api:
     container_name: kemu-api
-    build: ./
+    build: 
+      context: ./
+      dockerfile: backend.Dockerfile
     restart: always
     depends_on:
       - kemu-db
@@ -46,7 +48,7 @@ services:
       - ROCKET_PORT=3000
       - ROCKET_ADDRESS=0.0.0.0
       - BROWSER_BASE_URL=https://${DOMAIN}
-      - ROCKET_DATABASES={postgres_database={url=postgres://api:${DB_PASS}/@kemu-db:5432/api}}
+      - ROCKET_DATABASES={postgres_database={url=postgres://api:${DB_PASS}@kemu-db:5432/api}}
       - JWT_EXPIRY_HOURS=${JWT_EXPIRY_HOURS}
       - JWT_SECRET=${JWT_SECRET}
       
@@ -56,7 +58,7 @@ services:
       - traefik.http.routers.api.entrypoints=websecure
       - traefik.http.routers.api.middlewares=security-headers@file
 
-  db:
+  kemu-db:
     container_name: kemu-db
     image: postgres:alpine
     restart: always
