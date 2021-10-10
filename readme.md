@@ -4,7 +4,7 @@
 
 For deployment, we assume that you are familiar with docker and docker-compose.
 ```sh
-git clone https://github.com/JosiahBull/api/
+git clone https://github.com/JosiahBull/api/ --recursive
 cd ./api
 cp .example.env .env
 nano .env #Update required configuration options
