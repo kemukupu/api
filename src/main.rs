@@ -420,7 +420,7 @@ async fn website_resource(file: PathBuf) -> Option<NamedFile> {
 /// Handle any 404's
 #[catch(404)]
 async fn not_found() -> Redirect {
-    Redirect::to(format!("${}/notfound", *BROWSER_BASE_URL))
+    Redirect::to("/notfound")
 }
 
 #[launch]
