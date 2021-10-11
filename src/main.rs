@@ -17,8 +17,8 @@ mod schema;
 use diesel::prelude::*;
 use lazy_static::lazy_static;
 use rocket::http::Status;
-use rocket::serde::json::Json;
 use rocket::response::Redirect;
+use rocket::serde::json::Json;
 use std::env::var;
 /// Database connection
 #[rocket_sync_db_pools::database("postgres_database")]
@@ -143,7 +143,11 @@ async fn login_student(
 }
 
 /// Create a new student
-#[post("/api/v1/student/create", data = "<new_user>", format = "application/json")]
+#[post(
+    "/api/v1/student/create",
+    data = "<new_user>",
+    format = "application/json"
+)]
 async fn create_student(
     conn: UsersDbConn,
     new_user: Json<models::UserCredentials>,
@@ -276,13 +280,55 @@ async fn delete_student(token: models::Claims, conn: UsersDbConn) -> models::Res
     .build();
 }
 
-#[get("/api/v1/scores")]
-async fn get_scores(conn: UsersDbConn) -> models::Response {
-    //TODO allow params for pagination, and selection of all scores from a specific user
-    use crate::schema::scores::dsl::*;
-    let r: Result<Vec<models::Score>, diesel::result::Error> = conn
-        .run(move |c| scores.limit(50).load::<crate::models::Score>(c))
+#[get("/api/v1/scores?<offset>&<limit>&<usr>&<id>")]
+async fn get_scores(
+    conn: UsersDbConn,
+    offset: Option<i64>,
+    limit: Option<i64>,
+    usr: Option<String>,
+    mut id: Option<i32>,
+) -> models::Response {
+    //Set the defaults for these values, and ensure non-negative
+    let offset: i64 = offset.unwrap_or(0).abs();
+    let limit: i64 = limit.unwrap_or(10).abs(); 
+
+    if id.is_none() && usr.is_some() {
+        //Load the id of the user suggested
+        use crate::schema::users::dsl::{usr as usr_struct, users};
+        let r: Option<crate::models::User> = conn
+        .run(move |c| {
+            let r = users
+                .filter(usr_struct.eq(usr.unwrap()))
+                .limit(1)
+                .load::<crate::models::User>(c);
+            if let Ok(mut v) = r {
+                if v.is_empty() {
+                    return None;
+                }
+                return Some(v.remove(0));
+            }
+            return None;
+        })
         .await;
+        if let Some(found_user) = r {
+            id = Some(found_user.id);
+        }
+    }
+
+    use crate::schema::scores::dsl::{usr_id as struct_id};
+    let r: Result<Vec<models::Score>, diesel::result::Error> = conn
+        .run(move |c| {
+            let mut db_request = crate::schema::scores::table.into_boxed();
+            if let Some(usr_id) = id {
+                db_request = db_request.filter(struct_id.eq(usr_id));
+            }
+            db_request
+                .limit(limit)
+                .offset(offset)
+                .load::<crate::models::Score>(c)
+        }
+    ).await;
+    
     if let Err(e) = r {
         return models::ResponseBuilder {
             data: format!("Failed to query the server due to error {}", e.to_string()),
@@ -290,8 +336,17 @@ async fn get_scores(conn: UsersDbConn) -> models::Response {
         }
         .build();
     }
+
+    let r = r.unwrap();
+    if r.is_empty() {
+        let data: Vec<()> = vec![];
+        return models::ResponseBuilder {
+            data,
+            status: Status::NoContent,
+        }.build()
+    }
     models::ResponseBuilder {
-        data: r.unwrap(),
+        data: r,
         status: Status::Ok,
     }
     .build()
@@ -338,7 +393,10 @@ async fn add_score(
 /// Serve docs about the api
 #[get("/api/docs")]
 async fn docs() -> NamedFile {
-    NamedFile::open(Path::new("static/docs/static.html")).await.ok().unwrap()
+    NamedFile::open(Path::new("static/docs/static.html"))
+        .await
+        .ok()
+        .unwrap()
 }
 
 /// Returns the current health status of the database
