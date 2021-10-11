@@ -1,0 +1,333 @@
+openapi: 3.0.0
+servers:
+  - url: https://kemukupu.com/api/v1
+    description: Current Public API
+paths:
+  /student:
+    get:
+      summary: Returns information about the user.
+      description: Identification is carried out via the provided token.
+      parameters:
+        - in: header
+          name: Authorisation
+          schema:
+            type: string
+            example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+          required: true
+      responses:
+        '200':
+          description: A JSON file containing information about the user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+                
+        '401':
+          description: Not authorised to access this data, ensure you have added the correct token under an authorisation header.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Invalid Auth Token
+                    description: Provides some helpful information about what was wrong about your request.
+        '400':
+          description: The user token you provided does not exist in the db! This can happen if you just deleted the user, and the token hasn't been cleared yet.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: User Not Found
+                    description: Provides some helpful information about what was wrong about your request.
+      tags:
+        - Authentication Required
+    delete:
+      summary: Delete a user from the database.
+      description: This will delete the user of the token you provide.
+      parameters:
+        - in: header
+          name: Authorisation
+          schema:
+            type: string
+            example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+          required: true
+      responses:
+        '200':
+          description: User was deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Account JoeBloggs123 was deleted
+                    description: Information about the deleted account.
+        '401':
+          description: Not authorised to access this data, ensure you have added the correct token under an authorisation header.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Invalid Auth Token
+                    description: Provides some helpful information about what was wrong about your request.
+        '400':
+          description: The user token you provided does not exist in the db! This can happen if you just deleted the user, and the token hasn't been cleared yet.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: User Not Found
+                    description: Provides some helpful information about what was wrong about your request.
+      tags:
+        - Authentication Required
+  /student/login:
+    post:
+      summary: Login and get a token to use for authenticated requests.
+      description: This will log the user in, and return a JWT you should store and use in future requests to authenticated endpoints.
+      requestBody:
+        description: Provide credentials to the api to login.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCredentials'
+      responses:
+        '200':
+          description: User succesfully logged in. The returned JWT should be stored and sent with future requests.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+                    description: The user token (JWT) this should be stored and sent with future requests.
+        '400':
+          description: Incorrect Password or Username.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Incorrect Password or Username
+                    description: The password or username for this user is incorrect, they should be prompted to try again.
+      tags:
+        - Public Endpoints
+  /student/create:
+    post:
+      summary: Create a new user account.
+      description: Creates a new user account, automatically logging it in and returning a JWT.
+      requestBody:
+        description: Provide a userbody to the api to use to create the new account.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCredentials'
+      responses:
+        '201':
+          description: User account created, and automatically logged in. The returned JWT should be stored and sent with future requests.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+                    description: The user token (JWT) this should be stored and sent with future requests.
+        '400':
+          description: Unable to create user due to bad request. This could be becuase of password requirements not being met, or the username being taken.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Password Too Short
+          
+      tags:
+        - Public Endpoints
+  /scores:
+    get:
+      summary: Get scores from the api.
+      description: Attempt to get scores from the api, takes parameters which can be used to parse which scores are acquired.
+      parameters:
+        - in: query
+          name: offset
+          schema:
+            type: integer
+          description: The number of items to skip before starting to collect the result set, useful for pagination.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: The numbers of items to return, between 1 and 100.
+        - in: query
+          name: usr
+          schema:
+            type: integer
+          description: The username of the user to query scores for. Not compatible with the id param.
+        - in: query
+          name: id
+          schema:
+            type: string
+          description: The id of the user to request score values for.
+      responses:
+        '200':
+          description: Successful request made to database.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: 
+                      $ref: '#/components/schemas/Score'
+        '204':
+          description: No data was available for your request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Score'
+                    example: []
+      tags:
+        - Public Endpoints
+    post:
+      summary: Save a score to the api.
+      description: Automatically uses the JWT provided as the account to save the score under.
+      parameters:
+        - in: header
+          name: Authorisation
+          schema:
+            type: string
+            example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+      requestBody:
+        description: Provide a score to save to the database
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewScore'
+        required: true
+      responses:
+        '201':
+          description: Score saved succesfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: ""
+        '401':
+          description: Not authorised to save score.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: "Invalid Auth Token"
+        '400':
+          description: Unable to parse provided body.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: "Score not found in body"
+      tags:
+        - Authentication Required
+  
+info:
+  description: An API to interact with the Kumu Kupu database.
+  version: "1.0.0"
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+  title: Kemu Kupu Api
+  contact:
+    name: Josiah Bull
+    email: josiah.bull7@gmail.com
+components:
+  schemas:
+    UserCredentials:
+      type: object
+      required:
+        - usr
+        - pwd
+      properties:
+        usr:
+          type: string
+          example: JoeBloggs123
+        pwd:
+          type: string
+          example: Hunter42
+    NewScore:
+      type: object
+      required:
+        - score
+      properties:
+        score:
+          type: integer
+          example: 45
+    Score:
+      type: object
+      required:
+        - score
+        - usr
+        - usr_id
+      properties:
+        score:
+          type: integer
+          example: 45
+        usr:
+          type: string
+          example: JoeBloggs123
+        usr_id:
+          type: integer
+          example: 289
+    User:
+      type: object
+      required:
+        - id
+        - usr
+      properties:
+        id:
+          description: The id of this user in the database.
+          type: integer
+          example: 54
+        usr:
+          description: The username of the provided user.
+          type: string
+          example: JoeBloggs
+        
+tags:
+  - name: Authentication Required
+    description: Endpoints tagged with this require an Authorisation header is set.
+  - name: Public Endpoints
+    description: These endpoints do not require any authentication.

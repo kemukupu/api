@@ -18,6 +18,7 @@ use diesel::prelude::*;
 use lazy_static::lazy_static;
 use rocket::http::Status;
 use rocket::serde::json::Json;
+use rocket::response::Redirect;
 use std::env::var;
 /// Database connection
 #[rocket_sync_db_pools::database("postgres_database")]
@@ -37,6 +38,7 @@ lazy_static! {
     static ref JWT_SECRET: String = var("JWT_SECRET").unwrap();
     static ref JWT_EXPIRY_TIME_HOURS: usize =
         var("JWT_EXPIRY_TIME_HOURS").unwrap().parse().unwrap();
+    static ref BROWSER_BASE_URL: String = var("BROWSER_BASE_URL").unwrap();
 }
 
 /// Return information about the student
@@ -141,7 +143,7 @@ async fn login_student(
 }
 
 /// Create a new student
-#[post("/api/v1/student", data = "<new_user>", format = "application/json")]
+#[post("/api/v1/student/create", data = "<new_user>", format = "application/json")]
 async fn create_student(
     conn: UsersDbConn,
     new_user: Json<models::UserCredentials>,
@@ -248,7 +250,7 @@ async fn delete_student(token: models::Claims, conn: UsersDbConn) -> models::Res
 
     if r.is_none() {
         return models::ResponseBuilder {
-            data: "User Does Not Exist",
+            data: "User Not Found",
             status: Status::BadRequest,
         }
         .build();
@@ -334,13 +336,13 @@ async fn add_score(
 }
 
 /// Serve docs about the api
-#[get("/docs")]
-fn docs() {
-    //TODO
+#[get("/api/docs")]
+async fn docs() -> NamedFile {
+    NamedFile::open(Path::new("static/docs/static.html")).await.ok().unwrap()
 }
 
 /// Returns the current health status of the database
-#[get("/health")]
+#[get("/api/health")]
 fn health() -> models::Response {
     //TODO
     ResponseBuilder {
@@ -352,15 +354,15 @@ fn health() -> models::Response {
 
 /// Handle the serving of any static resources for various pages
 /// SAFETY: Rocket has a neat implementation preventing a path from getting outside of /static - keeping our host safe.
-#[get("/static/<file..>")]
+#[get("/api/static/<file..>")]
 async fn website_resource(file: PathBuf) -> Option<NamedFile> {
     NamedFile::open(Path::new("static/").join(file)).await.ok()
 }
 
 /// Handle any 404's
 #[catch(404)]
-async fn not_found() -> Option<NamedFile> {
-    NamedFile::open("static/www/404.html").await.ok()
+async fn not_found() -> Redirect {
+    Redirect::to(format!("${}/notfound", *BROWSER_BASE_URL))
 }
 
 #[launch]
@@ -370,6 +372,7 @@ fn rocket() -> _ {
         .mount(
             "/",
             routes![
+                docs,
                 get_student,
                 login_student,
                 create_student,
