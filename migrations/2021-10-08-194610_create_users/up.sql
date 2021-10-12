@@ -8,5 +8,5 @@ CREATE TABLE users (
 CREATE TABLE scores (
     id SERIAL PRIMARY KEY,
     usr_id INT NOT NULL,
-    score INT NOT NULL,
+    score INT NOT NULL
 );
