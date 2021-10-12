@@ -7,7 +7,6 @@ CREATE TABLE users (
 
 CREATE TABLE scores (
     id SERIAL PRIMARY KEY,
-    usr_id SERIAL NOT NULL,
+    usr_id INT NOT NULL,
     score INT NOT NULL,
-    CONSTRAINT fk_users FOREIGN KEY(usr_id) REFERENCES users(id)
 );
