@@ -2,7 +2,8 @@
 
 ## Getting Started
 
-For deployment, we assume that you are familiar with docker and docker-compose.
+**Deployment**
+We assume that you are familiar with docker and docker-compose.
 ```sh
 git clone https://github.com/JosiahBull/api/ --recursive
 cd ./api

@@ -21,8 +21,7 @@ pub struct User {
 }
 
 /// A score uploaded by a user
-#[derive(Queryable, Insertable, Serialize)]
-#[table_name = "scores"]
+#[derive(Queryable, Serialize)]
 pub struct Score {
     pub id: i32,
     pub usr_id: i32,
@@ -32,6 +31,14 @@ pub struct Score {
 #[derive(Deserialize)]
 pub struct NewScore {
     pub score: i32,
+}
+
+#[derive(Insertable)]
+#[table_name = "scores"]
+
+pub struct InsertableScore {
+    pub score: i32,
+    pub usr_id: i32,
 }
 
 /// User credentials, to be used when logging in or creating a new account

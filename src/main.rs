@@ -312,6 +312,12 @@ async fn get_scores(
         .await;
         if let Some(found_user) = r {
             id = Some(found_user.id);
+        } else {
+            let data: Vec<()> = vec![];
+            return models::ResponseBuilder {
+                data,
+                status: Status::Ok,
+            }.build()
         }
     }
 
@@ -342,7 +348,7 @@ async fn get_scores(
         let data: Vec<()> = vec![];
         return models::ResponseBuilder {
             data,
-            status: Status::NoContent,
+            status: Status::Ok,
         }.build()
     }
     models::ResponseBuilder {
@@ -360,8 +366,7 @@ async fn add_score(
 ) -> models::Response {
     let new_score = new_score.into_inner();
     //Assign the user id
-    let new_score = models::Score {
-        id: 0, //doesn't matter, is automatically assigned in the schema
+    let new_score = models::InsertableScore {
         usr_id: token.sub,
         score: new_score.score,
     };
@@ -442,4 +447,21 @@ fn rocket() -> _ {
             ],
         )
         .attach(UsersDbConn::fairing())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::rocket;
+    use rocket::local::blocking::Client;
+    use rocket::http::Status;
+
+    #[test]
+    fn test_health() {
+        let client = Client::tracked(rocket()).expect("valid rocket instance");
+        let response = client.get(uri!("/api/health")).dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.into_string(), Some("{\"data\": \"Online\"}".into()));
+    }
 }

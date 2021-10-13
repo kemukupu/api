@@ -199,18 +199,6 @@ paths:
                     type: array
                     items: 
                       $ref: '#/components/schemas/Score'
-        '204':
-          description: No data was available for your request.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Score'
-                    example: []
       tags:
         - Public Endpoints
     post:
@@ -264,7 +252,7 @@ paths:
         - Authentication Required
   
 info:
-  description: An API to interact with the Kumu Kupu database.
+  description: An API to interact with the Kemu Kupu database.
   version: "1.0.0"
   license:
     name: Apache 2.0
