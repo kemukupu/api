@@ -397,10 +397,6 @@ components:
           example: 45
     Score:
       type: object
-      required:
-        - score
-        - usr
-        - usr_id
       properties:
         score:
           type: integer
@@ -413,9 +409,6 @@ components:
           example: 289
     User:
       type: object
-      required:
-        - id
-        - usr
       properties:
         id:
           description: The id of this user in the database.
@@ -425,12 +418,22 @@ components:
           description: The username of the provided user.
           type: string
           example: JoeBloggs
+        stars:
+          description: The total number of stars this user has earned.
+          type: integer
+          example: 50
+        num_games:
+          description: The number of games this user has played.
+          type: integer
+          example: 23
+        high_score:
+          description: The highest score this user has achieved.
+          type: integer
+          example: 95
     Costume:
       type: object
       required:
         - name
-        - description
-        - price
       properties:
         name:
           description: The name of the costume.

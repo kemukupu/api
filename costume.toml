@@ -1,0 +1,12 @@
+[global]
+img_path = "/static/costume/"
+
+[costume.default]
+name = "default"
+description = "An aspiring student, just starting out!"
+price = 0
+
+[costume.second]
+name = "second"
+description = "second student!"
+price = 0

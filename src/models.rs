@@ -1,5 +1,5 @@
 use crate::schema::*;
-use crate::{JWT_EXPIRY_TIME_HOURS, JWT_SECRET};
+use crate::{COSTUMES, JWT_EXPIRY_TIME_HOURS, JWT_SECRET};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rocket::http::{ContentType, Status};
 use rocket::request::{self, FromRequest, Request};
@@ -12,12 +12,14 @@ fn wrap(s: String) -> String {
 }
 
 /// A user stored in the database
-#[derive(Queryable, Serialize, Clone)]
+#[derive(Queryable, Serialize, Clone, QueryableByName)]
+#[table_name = "users"]
 pub struct User {
     pub id: i32,
     pub usr: String,
     #[serde(skip_serializing)]
     pub pwd: String, //Hashed
+    pub costumes: Vec<Costume>,
 }
 
 /// A score uploaded by a user
@@ -25,17 +27,18 @@ pub struct User {
 pub struct Score {
     pub id: i32,
     pub usr_id: i32,
+    pub num_stars: i32,
     pub score: i32,
 }
 
 #[derive(Deserialize)]
 pub struct NewScore {
     pub score: i32,
+    pub num_stars: i32,
 }
 
 #[derive(Insertable)]
 #[table_name = "scores"]
-
 pub struct InsertableScore {
     pub score: i32,
     pub usr_id: i32,
@@ -47,6 +50,43 @@ pub struct InsertableScore {
 pub struct UserCredentials {
     pub usr: String,
     pub pwd: String,
+    #[serde(default)]
+    pub costumes: Vec<String>,
+}
+
+/// A costume that the user may equip once they reach a certain ranking.
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Costume {
+    pub name: String,
+    pub description: String,
+    pub price: usize,
+}
+
+impl diesel::types::FromSql<diesel::sql_types::Text, diesel::pg::Pg> for Costume {
+    fn from_sql(
+        opt: std::option::Option<&<diesel::pg::Pg as diesel::backend::Backend>::RawValue>,
+    ) -> Result<Costume, Box<(dyn std::error::Error + Sync + std::marker::Send + 'static)>> {
+        if opt.is_none() {
+            return Err(Box::new(diesel::result::Error::DeserializationError(
+                "Was asked to parse from empty type into costume! This shoudn't happen!".into(),
+            )));
+        }
+        let costume_name = std::str::from_utf8(opt.unwrap()).map_err(|e| {
+            Box::new(diesel::result::Error::DeserializationError(
+                format!("Unable to parse the costume name as a string! Error {}", e).into(),
+            ))
+        })?;
+        if !COSTUMES.contains_key(costume_name) {
+            return Err(Box::new(diesel::result::Error::DeserializationError(
+                format!(
+                    "Failed to parse {}, as the key was not found in `./costume.toml`!",
+                    costume_name
+                )
+                .into(),
+            )));
+        }
+        Ok(COSTUMES.get(costume_name).unwrap().clone())
+    }
 }
 
 #[derive(Debug)]
