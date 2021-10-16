@@ -55,11 +55,16 @@ pub struct UserCredentials {
 }
 
 /// A costume that the user may equip once they reach a certain ranking.
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Serialize, Clone)]
 pub struct Costume {
     pub name: String,
     pub description: String,
     pub price: usize,
+}
+
+#[derive(Deserialize)]
+pub struct UnlockCostume {
+    pub name: String,
 }
 
 impl diesel::types::FromSql<diesel::sql_types::Text, diesel::pg::Pg> for Costume {

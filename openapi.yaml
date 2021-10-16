@@ -200,7 +200,11 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Costume'
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: pirate      
         required: true
       responses:
         '200':
@@ -391,14 +395,21 @@ components:
       type: object
       required:
         - score
+        - num_stars
       properties:
         score:
+          type: integer
+          example: 45
+        num_stars:
           type: integer
           example: 45
     Score:
       type: object
       properties:
         score:
+          type: integer
+          example: 45
+        num_stars:
           type: integer
           example: 45
         usr:

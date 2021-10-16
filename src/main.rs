@@ -26,13 +26,6 @@ use toml::value::Table;
 #[rocket_sync_db_pools::database("postgres_database")]
 struct UsersDbConn(diesel::PgConnection);
 
-// Thinking about endpoints
-// GET api/v1/student/{id}, request information about a user, must contain AUTH header with their token.
-// POST api/v1/student/login, to request an access (JWT) token, must attach login details in body
-// DELETE api/v1/student/{id}, to remove a user
-// GET api/v1/highscores, to request a list of all the high scores
-// POST /api/va/highscore, to add a new score - must contain information about the user
-
 // TODO General todos
 // Move common DB requests (such as looking up a user) into a framework under common.rs to avoid duplicate code.
 // Modify get requests to support 500 server-failure errors if the db is unable to be accessed.
@@ -49,9 +42,15 @@ lazy_static! {
 
         //Load global settings and costume data
         //TODO
-        let _global: &Table = f.get("global").expect("Unable to find [global] tag in `./costume.toml`").as_table().expect("Unable to find [global] tag in `./costume.toml`");
+        let _global: &Table = f.get("global")
+            .expect("Unable to find [global] tag in `./costume.toml`")
+            .as_table()
+            .expect("Unable to find [global] tag in `./costume.toml`");
 
-        let costumes: &Table = f.get("costume").expect("Unable to parse `./costume.toml`, no costumes provided!").as_table().expect("Unable to find [global] tag in `./costume.toml`");
+        let costumes: &Table = f.get("costume")
+            .expect("Unable to parse `./costume.toml`, no costumes provided!")
+            .as_table()
+            .expect("Unable to find [global] tag in `./costume.toml`");
 
         //Validate all global settings are present
         //TODO
@@ -455,7 +454,7 @@ async fn get_costumes(token: models::Claims, conn: UsersDbConn) -> models::Respo
             };
         })
         .await;
-    
+
     //Check request is ok
     if let Err(e) = r {
         return models::ResponseBuilder {
@@ -491,7 +490,7 @@ async fn get_costumes(token: models::Claims, conn: UsersDbConn) -> models::Respo
 async fn unlock_costume(
     token: models::Claims,
     conn: UsersDbConn,
-    costume: Json<models::Costume>,
+    costume: Json<models::UnlockCostume>,
 ) -> models::Response {
     let costume = costume.into_inner();
     //Check requested costume exists
@@ -499,7 +498,8 @@ async fn unlock_costume(
         return models::ResponseBuilder {
             data: "Costume does not exist",
             status: Status::BadRequest,
-        }.build()
+        }
+        .build();
     }
 
     //Load costume
@@ -515,7 +515,7 @@ async fn unlock_costume(
                 .load::<crate::models::Score>(c)
         })
         .await;
-    
+
     //Check request is ok
     if let Err(e) = r {
         return models::ResponseBuilder {
@@ -536,15 +536,18 @@ async fn unlock_costume(
         return models::ResponseBuilder {
             data: "Costume is too expensive",
             status: Status::BadRequest,
-        }.build()
+        }
+        .build();
     }
 
     //Modify that user with their new costume!
-    let r = conn.run(move |c| {
-        //HACK currently diesel does not support this sort of array manipulation, but it will come eventually!
-        let cmd = format!("UPDATE users SET costume = array_append(costumes, {}) WHERE id={} LIMIT 1 RETURNING *;", &costume.name, &token.sub);
-        diesel::sql_query(&cmd).load::<crate::models::User>(c)
-    }).await;
+    let r = conn
+        .run(move |c| {
+            //HACK currently diesel does not support this sort of array manipulation, but it will come eventually!
+            let cmd = format!("UPDATE users SET costumes = (select array_agg(distinct e) from unnest(costumes || '{{{}}}') e) WHERE id={} RETURNING *;", &costume.name, &token.sub);
+            diesel::sql_query(&cmd).load::<crate::models::User>(c)
+        })
+        .await;
 
     if let Err(e) = r {
         return models::ResponseBuilder {
@@ -564,9 +567,10 @@ async fn unlock_costume(
     }
 
     return models::ResponseBuilder {
-        data: r.get(1),
+        data: r.get(0),
         status: Status::Ok,
-    }.build()
+    }
+    .build();
 }
 
 /// Serve docs about the api
@@ -596,6 +600,12 @@ async fn website_resource(file: PathBuf) -> Option<NamedFile> {
     NamedFile::open(Path::new("static/").join(file)).await.ok()
 }
 
+/// Endpoint mostly used during development, is a final catch-all to prevent infinite loops.
+#[get("/notfound")]
+fn not_found_stop_point() -> &'static str {
+    "Route Not Found"
+}
+
 /// Handle any 404's
 #[catch(404)]
 async fn not_found() -> Redirect {
@@ -604,7 +614,12 @@ async fn not_found() -> Redirect {
 
 #[launch]
 fn rocket() -> _ {
-    //TODO force all lazy_statics to parse here!
+    //Initalize all globals
+    lazy_static::initialize(&JWT_SECRET);
+    lazy_static::initialize(&JWT_EXPIRY_TIME_HOURS);
+    lazy_static::initialize(&BROWSER_BASE_URL);
+    lazy_static::initialize(&COSTUMES);
+    //Launch rocket
     rocket::build()
         .register("/", catchers![not_found])
         .mount(
@@ -621,26 +636,8 @@ fn rocket() -> _ {
                 get_costumes,
                 website_resource,
                 health,
+                not_found_stop_point,
             ],
         )
         .attach(UsersDbConn::fairing())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::rocket;
-    use rocket::http::Status;
-    use rocket::local::blocking::Client;
-
-    #[test]
-    fn test_health() {
-        let client = Client::tracked(rocket()).expect("valid rocket instance");
-        let response = client.get(uri!("/api/health")).dispatch();
-
-        assert_eq!(response.status(), Status::Ok);
-        assert_eq!(
-            response.into_string(),
-            Some("{\"data\": \"Online\"}".into())
-        );
-    }
 }
