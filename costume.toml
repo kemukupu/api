@@ -8,45 +8,45 @@ price = 0
 
 [costume.sailor]
 name = "Sailor Bee"
-description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+description = "Arrrrgh matey. Taking a break from blundering the high seas to brush up on his Te Reo"
 price = 5
 
 [costume.magician]
 name = "Magician Bee"
-description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+description = "One. Two. Three. And he's gone! Somehow Magician Bee's never at class but he manages to do well. #sus"
 price = 30
 
 [costume.wizard]
 name = "Wizard Bee"
-description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+description = "Not only does he excel at casting spells but he's pretty great at spelling as well!"
 price = 5
 
 [costume.ninja]
 name = "Ninja Bee"
-description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+description = "Hiiyah! Ninja Bee here! Back at it with action. Let's go kick these spelling baddies goodbye!"
 price = 100
 
 [costume.queen]
 name = "Queen Bee"
-description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+description = "I'm the Queen Bee, a quizzer fit for royalty."
 price = 30
 
 [costume.fairy]
 name = "Fairy Bee"
-description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+description = "Hiya. Fairy bee here and I'll add a little sparkle to your spelling endeavours."
 price = 80
 
 [costume.professor]
 name = "Professor Bee"
-description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+description = "Attention class! I'll give you all you need to know to pass this course"
 price = 200
 
 [costume.alien]
 name = "Alien Bee"
-description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+description = "Wow. Human life is so interesting. What a marvelous language. Let's learn!"
 price = 50
 
 [costume.chef]
 name = "Chef Bee"
-description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+description = "Do I hear 'Yes Chef?' You betcha. Ready to come and cook up a storm!"
 price = 20
