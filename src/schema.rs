@@ -12,6 +12,7 @@ table! {
         id -> Int4,
         usr -> Text,
         pwd -> Text,
+        current_costume -> Text,
         costumes -> Array<Text>,
     }
 }

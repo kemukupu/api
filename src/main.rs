@@ -238,6 +238,7 @@ async fn create_student(
     let new_user = models::UserCredentials {
         usr: new_user.usr,
         pwd: hashed_password,
+        current_costume: "default".into(),
         costumes: vec!["default".into()],
     };
 
@@ -482,6 +483,49 @@ async fn get_costumes(token: models::Claims, conn: UsersDbConn) -> models::Respo
     .build();
 }
 
+#[post("/api/v1/student/<costume>")]
+async fn set_user_costume(token: models::Claims, conn: UsersDbConn, costume: String) -> models::Response {
+    if !COSTUMES.contains_key(&costume) {
+        return models::ResponseBuilder {
+            data: "Costume does not exist",
+            status: Status::BadRequest,
+        }
+        .build();
+    }
+
+    //Load costume
+    let costume = COSTUMES.get(&costume).unwrap();
+
+    //Load the user requested
+    let search_id = token.sub;
+    use crate::schema::users::dsl::*;
+    let r: Result<crate::models::User, diesel::result::Error> = conn
+        .run(move |c| {
+            let r: Result<crate::models::User, diesel::result::Error> = diesel::update(users.filter(id.eq(search_id)))
+                .set(current_costume.eq(&costume.name))
+                .get_result(c);
+            return r;
+        })
+        .await;
+
+    //Check request is ok
+    if let Err(e) = r {
+        return models::ResponseBuilder {
+            data: format!("Failed to query the server due to error {}", e.to_string()),
+            status: Status::InternalServerError,
+        }
+        .build();
+    }
+    let r = r.unwrap();
+
+    //Return value
+    return models::ResponseBuilder {
+        data: r,
+        status: Status::Ok,
+    }
+    .build();
+}
+
 #[post(
     "/api/v1/student/costumes",
     data = "<costume>",
@@ -646,6 +690,7 @@ fn rocket() -> _ {
                 login_student,
                 create_student,
                 delete_student,
+                set_user_costume,
                 get_scores,
                 add_score,
                 unlock_costume,

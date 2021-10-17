@@ -19,6 +19,7 @@ pub struct User {
     pub usr: String,
     #[serde(skip_serializing)]
     pub pwd: String, //Hashed
+    pub current_costume: String,
     pub costumes: Vec<Costume>,
 }
 
@@ -50,6 +51,8 @@ pub struct InsertableScore {
 pub struct UserCredentials {
     pub usr: String,
     pub pwd: String,
+    #[serde(default)]
+    pub current_costume: String,
     #[serde(default)]
     pub costumes: Vec<String>,
 }
