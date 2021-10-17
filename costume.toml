@@ -2,11 +2,51 @@
 img_path = "/static/costume/"
 
 [costume.default]
-name = "default"
-description = "An aspiring student, just starting out!"
+name = "B"
+description = "B, just your average bee with an aptitude for learning"
 price = 0
 
-[costume.second]
-name = "second"
-description = "second student!"
+[costume.sailor]
+name = "Sailor Bee"
+description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+price = 0
+
+[costume.magician]
+name = "Magician Bee"
+description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+price = 0
+
+[costume.wizard]
+name = "Wizard Bee"
+description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+price = 0
+
+[costume.ninja]
+name = "Ninja Bee"
+description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+price = 0
+
+[costume.queen]
+name = "Queen Bee"
+description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+price = 0
+
+[costume.fairy]
+name = "Fairy Bee"
+description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+price = 0
+
+[costume.professor]
+name = "Professor Bee"
+description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+price = 0
+
+[costume.alien]
+name = "Alien Bee"
+description = "Taking a break from blundering the high seas to brush up on his Te Reo"
+price = 0
+
+[costume.chef]
+name = "Chef Bee"
+description = "Taking a break from blundering the high seas to brush up on his Te Reo"
 price = 0
