@@ -1,5 +1,5 @@
 use crate::schema::*;
-use crate::{COSTUMES, JWT_EXPIRY_TIME_HOURS, JWT_SECRET};
+use crate::{ACHIEVEMENTS, COSTUMES, JWT_EXPIRY_TIME_HOURS, JWT_SECRET};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rocket::http::{ContentType, Status};
 use rocket::request::{self, FromRequest, Request};
@@ -10,42 +10,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 fn wrap(s: String) -> String {
     format!("{{\"data\": {}}}", s)
 }
-
-/// A user stored in the database
-#[derive(Queryable, Serialize, Clone, QueryableByName)]
-#[table_name = "users"]
-pub struct User {
-    pub id: i32,
-    pub usr: String,
-    pub nickname: String,
-    #[serde(skip_serializing)]
-    pub pwd: String, //Hashed
-    pub current_costume: String,
-    pub costumes: Vec<Costume>,
-}
-
-/// A score uploaded by a user
-#[derive(Queryable, Serialize)]
-pub struct Score {
-    pub id: i32,
-    pub usr_id: i32,
-    pub num_stars: i32,
-    pub score: i32,
-}
-
-#[derive(Deserialize)]
-pub struct NewScore {
-    pub score: i32,
-    pub num_stars: i32,
-}
-
-#[derive(Insertable)]
-#[table_name = "scores"]
-pub struct InsertableScore {
-    pub score: i32,
-    pub usr_id: i32,
-}
-
 /// User credentials, to be used when logging in or creating a new account
 #[derive(Deserialize)]
 pub struct UserCredentials {
@@ -63,10 +27,49 @@ pub struct NewUser {
     pub current_costume: String,
     #[serde(default)]
     pub costumes: Vec<String>,
+    #[serde(default)]
+    pub achievements: Vec<String>,
+}
+
+/// A user stored in the database
+#[derive(Queryable, Serialize, Clone, QueryableByName)]
+#[table_name = "users"]
+pub struct User {
+    pub id: i32,
+    pub usr: String,
+    pub nickname: String,
+    #[serde(skip_serializing)]
+    pub pwd: String, //Hashed
+    pub current_costume: String,
+    pub costumes: Vec<Costume>,
+    pub achievements: Vec<Achievement>,
+}
+
+/// A score uploaded by a user
+#[derive(Queryable, Serialize)]
+pub struct Score {
+    pub id: i32,
+    pub usr_id: i32,
+    pub score: i32,
+    pub num_stars: i32,
+}
+
+#[derive(Deserialize)]
+pub struct NewScore {
+    pub score: i32,
+    pub num_stars: i32,
+}
+
+#[derive(Insertable)]
+#[table_name = "scores"]
+pub struct InsertableScore {
+    pub usr_id: i32,
+    pub score: i32,
+    pub num_stars: i32,
 }
 
 /// A costume that the user may equip once they reach a certain ranking.
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone)]
 pub struct Costume {
     pub name: String,
     pub display_name: String,
@@ -106,13 +109,52 @@ impl diesel::types::FromSql<diesel::sql_types::Text, diesel::pg::Pg> for Costume
     }
 }
 
+#[derive(Serialize, Clone)]
+pub struct Achievement {
+    pub name: String,
+    pub display_name: String,
+    pub description: String,
+}
+
+#[derive(Deserialize)]
+pub struct UnlockAchievement {
+    pub name: String,
+}
+
+impl diesel::types::FromSql<diesel::sql_types::Text, diesel::pg::Pg> for Achievement {
+    fn from_sql(
+        opt: std::option::Option<&<diesel::pg::Pg as diesel::backend::Backend>::RawValue>,
+    ) -> Result<Achievement, Box<(dyn std::error::Error + Sync + std::marker::Send + 'static)>>
+    {
+        if opt.is_none() {
+            return Err(Box::new(diesel::result::Error::DeserializationError(
+                "Was asked to parse from empty type into costume! This shoudn't happen!".into(),
+            )));
+        }
+        let achievement_name = std::str::from_utf8(opt.unwrap()).map_err(|e| {
+            Box::new(diesel::result::Error::DeserializationError(
+                format!("Unable to parse the costume name as a string! Error {}", e).into(),
+            ))
+        })?;
+        if !ACHIEVEMENTS.contains_key(achievement_name) {
+            return Err(Box::new(diesel::result::Error::DeserializationError(
+                format!(
+                    "Failed to parse {}, as the key was not found in `./costume.toml`!",
+                    achievement_name
+                )
+                .into(),
+            )));
+        }
+        Ok(ACHIEVEMENTS.get(achievement_name).unwrap().clone())
+    }
+}
+
+/// Represents a basic JSON response from the api
 #[derive(Debug)]
 pub struct Response {
     body: String,
     status: Status,
 }
-
-/// Represents a basic JSON response from the api
 pub struct ResponseBuilder<T>
 where
     T: Serialize,

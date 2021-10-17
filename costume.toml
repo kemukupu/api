@@ -1,6 +1,3 @@
-[global]
-img_path = "/static/costume/"
-
 [costume.default]
 name = "B"
 description = "B, just your average bee with an aptitude for learning"

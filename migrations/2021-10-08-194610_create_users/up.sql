@@ -4,7 +4,8 @@ CREATE TABLE users (
     nickname TEXT NOT NULL,
     pwd TEXT NOT NULL,
     current_costume TEXT NOT NULL,
-    costumes TEXT[] NOT NULL
+    costumes TEXT[] NOT NULL,
+    achievements TEXT[] NOT NULL
 );
 
 CREATE TABLE scores (

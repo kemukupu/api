@@ -28,42 +28,50 @@ struct UsersDbConn(diesel::PgConnection);
 
 // TODO General todos
 // Move common DB requests (such as looking up a user) into a framework under common.rs to avoid duplicate code.
-// Modify get requests to support 500 server-failure errors if the db is unable to be accessed.
+// Modify get requests to support 500 server-failure errors if the db is unable to be accessed, rather than the current option-based solution
 // Move token boilerplate into a macro
 
 lazy_static! {
-    static ref JWT_SECRET: String = var("JWT_SECRET").unwrap();
+    static ref JWT_SECRET: String = var("JWT_SECRET").expect("Env var JWT_SECRET not set!");
     static ref JWT_EXPIRY_TIME_HOURS: usize =
-        var("JWT_EXPIRY_TIME_HOURS").unwrap().parse().unwrap();
-    static ref BROWSER_BASE_URL: String = var("BROWSER_BASE_URL").unwrap();
+        var("JWT_EXPIRY_TIME_HOURS").expect("Env var JWT_EXPIRY_TIME_HOURS not set!").parse().unwrap();
+    static ref BROWSER_BASE_URL: String = var("BROWSER_BASE_URL").expect("Env var BROWSER_BASE_URL not set!");
     static ref COSTUMES: HashMap<String, models::Costume> = {
         //Load data from file, and parse as toml
         let data = std::fs::read_to_string("./costume.toml").expect("Unable to find `./costume.toml`");
         let f = data.parse::<toml::Value>().expect("Unable to parse `./costume.toml`");
 
-        //Load global settings and costume data
-        //TODO
-        let _global: &Table = f.get("global")
-            .expect("Unable to find [global] tag in `./costume.toml`")
-            .as_table()
-            .expect("Unable to find [global] tag in `./costume.toml`");
-
         let costumes: &Table = f.get("costume")
             .expect("Unable to parse `./costume.toml`, no costumes provided!")
             .as_table()
-            .expect("Unable to find [global] tag in `./costume.toml`");
-
-        //Validate all global settings are present
-        //TODO
+            .expect("costume tag is not a table in `./costume.toml`");
 
         //Parse each costume into hashmap
         let mut map: HashMap<String, models::Costume> = HashMap::default();
         let keys: Vec<&String> = costumes.keys().into_iter().collect();
         for key in keys {
-            let costume = costumes.get(key).expect(&format!("Unable to parse costume {} from `./costume.toml`, is it correctly formatted?", key)).as_table().expect(&format!("Unable to parse {} as table from `./costume.toml`", key));
-            let display_name: String = costume.get("name").expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).as_str().expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).to_owned();
-            let description: String = costume.get("description").expect(&format!("Unable to parse description for costume {} from `./costume.toml`", key)).as_str().expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).to_owned();
-            let price: usize = costume.get("price").expect(&format!("Unable to parse price for costume {} from `./costume.toml`", key)).as_integer().expect(&format!("Unable to parse description for costume {} from `./costume.toml`", key)) as usize;
+            let costume = costumes
+                .get(key)
+                .expect(&format!("Unable to parse costume {} from `./costume.toml`, is it correctly formatted?", key))
+                .as_table()
+                .expect(&format!("Unable to parse {} as table from `./costume.toml`", key));
+            let display_name: String = costume
+                .get("name")
+                .expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key))
+                .as_str()
+                .expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key))
+                .to_owned();
+            let description: String = costume
+                .get("description")
+                .expect(&format!("Unable to parse description for costume {} from `./costume.toml`", key))
+                .as_str()
+                .expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key))
+                .to_owned();
+            let price: usize = costume
+                .get("price")
+                .expect(&format!("Unable to parse price for costume {} from `./costume.toml`", key))
+                .as_integer()
+                .expect(&format!("Unable to parse description for costume {} from `./costume.toml`", key)) as usize;
             map.insert(key.clone(), models::Costume {
                 name: key.clone(),
                 display_name,
@@ -72,6 +80,43 @@ lazy_static! {
             });
         }
 
+        return map;
+    };
+    static ref ACHIEVEMENTS: HashMap<String, models::Achievement> = {
+        let data = std::fs::read_to_string("./achievement.toml").expect("Unable to find `./achievement.toml`");
+        let f = data.parse::<toml::Value>().expect("Unable to parse `./achievement.toml`");
+
+        let achievements: &Table = f.get("achievement")
+            .expect("Unable to parse `./achievement.toml`, no achievements provided!")
+            .as_table()
+            .expect("achievement tag is not a table in `./achievement.toml`");
+
+        let mut map: HashMap<String, models::Achievement> = HashMap::default();
+        let keys: Vec<&String> = achievements.keys().into_iter().collect();
+        for key in keys {
+            let achievement = achievements
+                .get(key)
+                .expect(&format!("Unable to parse achievement {} from `./achievement.toml`, is it correctly formatted?", key))
+                .as_table()
+                .expect(&format!("Unable to parse {} as table from `./achievement.toml`", key));
+            let display_name: String = achievement
+                .get("name")
+                .expect(&format!("Unable to parse name for achievement {} from `./achievement.toml`", key))
+                .as_str()
+                .expect(&format!("Unable to parse name for achievement {} from `./achievement.toml`", key))
+                .to_owned();
+            let description: String = achievement
+                .get("description")
+                .expect(&format!("Unable to parse description for achievement {} from `./achievement.toml`", key))
+                .as_str()
+                .expect(&format!("Unable to parse name for achievement {} from `./achievement.toml`", key))
+                .to_owned();
+            map.insert(key.clone(), models::Achievement {
+                name: key.clone(),
+                display_name,
+                description,
+            });
+        }
         return map;
     };
 }
@@ -246,6 +291,7 @@ async fn create_student(conn: UsersDbConn, new_user: Json<models::NewUser>) -> m
         nickname: new_user.nickname,
         current_costume: "default".into(),
         costumes: vec!["default".into()],
+        achievements: vec![],
     };
 
     //Save account in db
@@ -423,6 +469,7 @@ async fn add_score(
     //Assign the user id
     let new_score = models::InsertableScore {
         usr_id: token.sub,
+        num_stars: new_score.num_stars,
         score: new_score.score,
     };
 
@@ -654,6 +701,63 @@ async fn unlock_costume(
     .build();
 }
 
+#[post(
+    "/api/v1/student/achievement",
+    data = "<achievement>",
+    format = "application/json"
+)]
+async fn unlock_achievement(
+    token: Result<models::Claims, models::Response>,
+    conn: UsersDbConn,
+    achievement: Json<models::UnlockAchievement>,
+) -> models::Response {
+    if let Err(e) = token {
+        return e;
+    }
+    let token = token.unwrap();
+    //Check relevant achievement exists
+    let achievement = achievement.into_inner();
+    if !ACHIEVEMENTS.contains_key(&achievement.name) {
+        return models::ResponseBuilder {
+            data: "Achievement does not exist",
+            status: Status::BadRequest,
+        }
+        .build();
+    }
+
+    //Modify that user with new achievement!
+    let r = conn
+        .run(move |c| {
+            //HACK currently diesel does not support this sort of array manipulation, but it will come eventually!
+            let cmd = format!("UPDATE users SET achievements = (select array_agg(distinct e) from unnest(achievements || '{{{}}}') e) WHERE id={} RETURNING *;", &achievement.name, &token.sub);
+            diesel::sql_query(&cmd).load::<crate::models::User>(c)
+        })
+        .await;
+
+    if let Err(e) = r {
+        return models::ResponseBuilder {
+            data: format!("Failed to query the server due to error {}", e.to_string()),
+            status: Status::InternalServerError,
+        }
+        .build();
+    }
+
+    let r = r.unwrap();
+    if r.is_empty() {
+        return models::ResponseBuilder {
+            data: format!("Failed to query the server due to being unable to find user! Was it deleted while this query was running?"),
+            status: Status::InternalServerError,
+        }
+        .build();
+    }
+
+    return models::ResponseBuilder {
+        data: r.get(0),
+        status: Status::Ok,
+    }
+    .build();
+}
+
 #[get("/api/v1/costume")]
 fn get_costume_information() -> models::Response {
     let data: Vec<models::Costume> = COSTUMES.values().cloned().collect();
@@ -717,6 +821,7 @@ fn rocket() -> _ {
     lazy_static::initialize(&JWT_EXPIRY_TIME_HOURS);
     lazy_static::initialize(&BROWSER_BASE_URL);
     lazy_static::initialize(&COSTUMES);
+    lazy_static::initialize(&ACHIEVEMENTS);
     //Launch rocket
     rocket::build()
         .register("/", catchers![not_found])
@@ -735,6 +840,7 @@ fn rocket() -> _ {
                 get_costumes,
                 get_costume_information,
                 get_costume_image,
+                unlock_achievement,
                 website_resource,
                 health,
                 not_found_stop_point,

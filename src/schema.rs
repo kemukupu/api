@@ -15,6 +15,7 @@ table! {
         pwd -> Text,
         current_costume -> Text,
         costumes -> Array<Text>,
+        achievements -> Array<Text>,
     }
 }
 

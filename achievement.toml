@@ -1,0 +1,89 @@
+[achievement.practice]
+name = "Practice Makes Perfect!"
+description = "Play a pratice round"
+# requirements = false
+
+[achievement.play]
+name = "For real this time"
+description = "Play a scored game round"
+# requirements = false
+
+[achievement.practiceEvery]
+name = "Practicing jedi"
+description = "Practice every single topic"
+# requirements = false
+
+[achievement.playEvery]
+name = "Spelling jedi"
+description = "Play a game for every single topic"
+# requirements = false
+
+[achievement.diligence5]
+name = "Just starting out"
+description = "Play 5 Games"
+# requirements = { num_games = 5 }
+
+[achievement.diligence10]
+name = "Getting the hang of it"
+description = "Play 10 Games"
+# requirements = { num_games = 10 }
+
+[achievement.diligence20]
+name = "Here we go again"
+description = "Play 20 Games"
+# requirements = { num_games = 20 }
+
+[achievement.diligence50]
+name = "Into the breach"
+description = "Play 50 Games"
+# requirements = { num_games = 50 }
+
+[achievement.diligence100]
+name = "Mastery achieved"
+description = "Play 100 Games"
+# requirements = { num_games = 100 }
+
+[achievement.highscore75]
+name = "On the way up"
+description = "Achieve a high score of at least 75 points"
+# requirements = { high_score = 75 }
+
+[achievement.highscore90]
+name = "Reaching the peak"
+description = "Achieve a high score of at least 90 points"
+# requirements = { high_score = 90 }
+
+[achievement.highscore100]
+name = "On top of the world"
+description = "Achieve a high score of 100 points"
+# requirements = { high_score = 100 }
+
+[achievement.unlockAll]
+name = "Stylish Kiddo"
+description = "Unlock all costumes"
+# requirements = { costumes = "all" }
+
+[achievement.star10]
+name = "Small beginnings"
+description = "Have 10 stars"
+# requirements = { stars = 10 }
+
+[achievement.star50]
+name = "Climbing the ladder"
+description = "Have 50 stars"
+# requirements = { stars = 50 }
+
+[achievement.star100]
+name = "Can't Stop Won't Stop"
+description = "Have 100 stars"
+# requirements = { stars = 100 }
+
+[achievement.star200]
+name = "Mr. Moneybags"
+description = "Have 200 stars"
+# requirements = { stars = 200 }
+
+[achievement.star300]
+name = "Hello, Jeff Bezos"
+description = "Have 300 stars"
+# requirements = { stars = 300 }
