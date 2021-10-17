@@ -29,6 +29,7 @@ struct UsersDbConn(diesel::PgConnection);
 // TODO General todos
 // Move common DB requests (such as looking up a user) into a framework under common.rs to avoid duplicate code.
 // Modify get requests to support 500 server-failure errors if the db is unable to be accessed.
+// Move token boilerplate into a macro
 
 lazy_static! {
     static ref JWT_SECRET: String = var("JWT_SECRET").unwrap();
@@ -77,7 +78,11 @@ lazy_static! {
 
 /// Return information about the student
 #[get("/api/v1/student")]
-async fn get_student(token: models::Claims, conn: UsersDbConn) -> models::Response {
+async fn get_student(token: Result<models::Claims, models::Response>, conn: UsersDbConn) -> models::Response {
+    if let Err(e) = token {
+        return e;
+    }
+    let token = token.unwrap();
     //Load the item from the db, if it exists
     use crate::schema::users::dsl::*;
     let r: Option<crate::models::User> = conn
@@ -268,7 +273,11 @@ async fn create_student(
 }
 
 #[delete("/api/v1/student")]
-async fn delete_student(token: models::Claims, conn: UsersDbConn) -> models::Response {
+async fn delete_student(token: Result<models::Claims, models::Response>, conn: UsersDbConn) -> models::Response {
+    if let Err(e) = token {
+        return e;
+    }
+    let token = token.unwrap();
     //Check the user exists
     use crate::schema::users::dsl::*;
     let usr_id = token.sub.clone();
@@ -398,10 +407,14 @@ async fn get_scores(
 
 #[post("/api/v1/scores", data = "<new_score>", format = "application/json")]
 async fn add_score(
-    token: models::Claims,
+    token: Result<models::Claims, models::Response>,
     new_score: Json<models::NewScore>,
     conn: UsersDbConn,
 ) -> models::Response {
+    if let Err(e) = token {
+        return e;
+    }
+    let token = token.unwrap();
     let new_score = new_score.into_inner();
     //Assign the user id
     let new_score = models::InsertableScore {
@@ -434,7 +447,11 @@ async fn add_score(
 }
 
 #[get("/api/v1/student/costumes")]
-async fn get_costumes(token: models::Claims, conn: UsersDbConn) -> models::Response {
+async fn get_costumes(token: Result<models::Claims, models::Response>, conn: UsersDbConn) -> models::Response {
+    if let Err(e) = token {
+        return e;
+    }
+    let token = token.unwrap();
     //Load the user requested
     let search_id = token.sub;
     use crate::schema::users::dsl::*;
@@ -484,7 +501,11 @@ async fn get_costumes(token: models::Claims, conn: UsersDbConn) -> models::Respo
 }
 
 #[post("/api/v1/student/<costume>")]
-async fn set_user_costume(token: models::Claims, conn: UsersDbConn, costume: String) -> models::Response {
+async fn set_user_costume(token: Result<models::Claims, models::Response>, conn: UsersDbConn, costume: String) -> models::Response {
+    if let Err(e) = token {
+        return e;
+    }
+    let token = token.unwrap();
     if !COSTUMES.contains_key(&costume) {
         return models::ResponseBuilder {
             data: "Costume does not exist",
@@ -532,10 +553,14 @@ async fn set_user_costume(token: models::Claims, conn: UsersDbConn, costume: Str
     format = "application/json"
 )]
 async fn unlock_costume(
-    token: models::Claims,
+    token: Result<models::Claims, models::Response>,
     conn: UsersDbConn,
     costume: Json<models::UnlockCostume>,
 ) -> models::Response {
+    if let Err(e) = token {
+        return e;
+    }
+    let token = token.unwrap();
     let costume = costume.into_inner();
     //Check requested costume exists
     if !COSTUMES.contains_key(&costume.name) {
