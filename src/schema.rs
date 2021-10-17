@@ -11,6 +11,7 @@ table! {
     users (id) {
         id -> Int4,
         usr -> Text,
+        nickname -> Text,
         pwd -> Text,
         current_costume -> Text,
         costumes -> Array<Text>,

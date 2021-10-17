@@ -61,12 +61,12 @@ lazy_static! {
         let keys: Vec<&String> = costumes.keys().into_iter().collect();
         for key in keys {
             let costume = costumes.get(key).expect(&format!("Unable to parse costume {} from `./costume.toml`, is it correctly formatted?", key)).as_table().expect(&format!("Unable to parse {} as table from `./costume.toml`", key));
-            let name: String = costume.get("name").expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).as_str().expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).to_owned();
+            let display_name: String = costume.get("name").expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).as_str().expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).to_owned();
             let description: String = costume.get("description").expect(&format!("Unable to parse description for costume {} from `./costume.toml`", key)).as_str().expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).to_owned();
             let price: usize = costume.get("price").expect(&format!("Unable to parse price for costume {} from `./costume.toml`", key)).as_integer().expect(&format!("Unable to parse description for costume {} from `./costume.toml`", key)) as usize;
-
-            map.insert(name.clone(), models::Costume {
-                name,
+            map.insert(key.clone(), models::Costume {
+                name: key.clone(),
+                display_name,
                 description,
                 price,
             });
@@ -78,7 +78,10 @@ lazy_static! {
 
 /// Return information about the student
 #[get("/api/v1/student")]
-async fn get_student(token: Result<models::Claims, models::Response>, conn: UsersDbConn) -> models::Response {
+async fn get_student(
+    token: Result<models::Claims, models::Response>,
+    conn: UsersDbConn,
+) -> models::Response {
     if let Err(e) = token {
         return e;
     }
@@ -187,10 +190,7 @@ async fn login_student(
     data = "<new_user>",
     format = "application/json"
 )]
-async fn create_student(
-    conn: UsersDbConn,
-    new_user: Json<models::UserCredentials>,
-) -> models::Response {
+async fn create_student(conn: UsersDbConn, new_user: Json<models::NewUser>) -> models::Response {
     //Check their password meets minimum requirements
     let new_user = new_user.into_inner();
     if new_user.pwd.len() < 8 {
@@ -240,9 +240,10 @@ async fn create_student(
         }
     };
 
-    let new_user = models::UserCredentials {
+    let new_user = models::NewUser {
         usr: new_user.usr,
         pwd: hashed_password,
+        nickname: new_user.nickname,
         current_costume: "default".into(),
         costumes: vec!["default".into()],
     };
@@ -273,7 +274,10 @@ async fn create_student(
 }
 
 #[delete("/api/v1/student")]
-async fn delete_student(token: Result<models::Claims, models::Response>, conn: UsersDbConn) -> models::Response {
+async fn delete_student(
+    token: Result<models::Claims, models::Response>,
+    conn: UsersDbConn,
+) -> models::Response {
     if let Err(e) = token {
         return e;
     }
@@ -447,7 +451,10 @@ async fn add_score(
 }
 
 #[get("/api/v1/student/costumes")]
-async fn get_costumes(token: Result<models::Claims, models::Response>, conn: UsersDbConn) -> models::Response {
+async fn get_costumes(
+    token: Result<models::Claims, models::Response>,
+    conn: UsersDbConn,
+) -> models::Response {
     if let Err(e) = token {
         return e;
     }
@@ -501,7 +508,11 @@ async fn get_costumes(token: Result<models::Claims, models::Response>, conn: Use
 }
 
 #[post("/api/v1/student/<costume>")]
-async fn set_user_costume(token: Result<models::Claims, models::Response>, conn: UsersDbConn, costume: String) -> models::Response {
+async fn set_user_costume(
+    token: Result<models::Claims, models::Response>,
+    conn: UsersDbConn,
+    costume: String,
+) -> models::Response {
     if let Err(e) = token {
         return e;
     }
@@ -522,9 +533,10 @@ async fn set_user_costume(token: Result<models::Claims, models::Response>, conn:
     use crate::schema::users::dsl::*;
     let r: Result<crate::models::User, diesel::result::Error> = conn
         .run(move |c| {
-            let r: Result<crate::models::User, diesel::result::Error> = diesel::update(users.filter(id.eq(search_id)))
-                .set(current_costume.eq(&costume.name))
-                .get_result(c);
+            let r: Result<crate::models::User, diesel::result::Error> =
+                diesel::update(users.filter(id.eq(search_id)))
+                    .set(current_costume.eq(&costume.name))
+                    .get_result(c);
             return r;
         })
         .await;
@@ -644,11 +656,12 @@ async fn unlock_costume(
 
 #[get("/api/v1/costume")]
 fn get_costume_information() -> models::Response {
-    let data: Vec<models::Costume> = COSTUMES.values().cloned().collect(); 
+    let data: Vec<models::Costume> = COSTUMES.values().cloned().collect();
     return models::ResponseBuilder {
         data: data,
-        status: Status::Ok
-    }.build()
+        status: Status::Ok,
+    }
+    .build();
 }
 
 #[get("/api/v1/costume/image/<costume_id>")]

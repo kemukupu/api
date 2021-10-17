@@ -17,6 +17,7 @@ fn wrap(s: String) -> String {
 pub struct User {
     pub id: i32,
     pub usr: String,
+    pub nickname: String,
     #[serde(skip_serializing)]
     pub pwd: String, //Hashed
     pub current_costume: String,
@@ -46,11 +47,18 @@ pub struct InsertableScore {
 }
 
 /// User credentials, to be used when logging in or creating a new account
-#[derive(Deserialize, Insertable)]
-#[table_name = "users"]
+#[derive(Deserialize)]
 pub struct UserCredentials {
     pub usr: String,
     pub pwd: String,
+}
+
+#[derive(Deserialize, Insertable)]
+#[table_name = "users"]
+pub struct NewUser {
+    pub usr: String,
+    pub pwd: String,
+    pub nickname: String,
     #[serde(default)]
     pub current_costume: String,
     #[serde(default)]
@@ -58,9 +66,10 @@ pub struct UserCredentials {
 }
 
 /// A costume that the user may equip once they reach a certain ranking.
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub struct Costume {
     pub name: String,
+    pub display_name: String,
     pub description: String,
     pub price: usize,
 }

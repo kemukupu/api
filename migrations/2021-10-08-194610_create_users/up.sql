@@ -1,6 +1,7 @@
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     usr TEXT NOT NULL,
+    nickname TEXT NOT NULL,
     pwd TEXT NOT NULL,
     current_costume TEXT NOT NULL,
     costumes TEXT[] NOT NULL
