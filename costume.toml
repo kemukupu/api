@@ -9,44 +9,44 @@ price = 0
 [costume.sailor]
 name = "Sailor Bee"
 description = "Taking a break from blundering the high seas to brush up on his Te Reo"
-price = 0
+price = 5
 
 [costume.magician]
 name = "Magician Bee"
 description = "Taking a break from blundering the high seas to brush up on his Te Reo"
-price = 0
+price = 30
 
 [costume.wizard]
 name = "Wizard Bee"
 description = "Taking a break from blundering the high seas to brush up on his Te Reo"
-price = 0
+price = 5
 
 [costume.ninja]
 name = "Ninja Bee"
 description = "Taking a break from blundering the high seas to brush up on his Te Reo"
-price = 0
+price = 100
 
 [costume.queen]
 name = "Queen Bee"
 description = "Taking a break from blundering the high seas to brush up on his Te Reo"
-price = 0
+price = 30
 
 [costume.fairy]
 name = "Fairy Bee"
 description = "Taking a break from blundering the high seas to brush up on his Te Reo"
-price = 0
+price = 80
 
 [costume.professor]
 name = "Professor Bee"
 description = "Taking a break from blundering the high seas to brush up on his Te Reo"
-price = 0
+price = 200
 
 [costume.alien]
 name = "Alien Bee"
 description = "Taking a break from blundering the high seas to brush up on his Te Reo"
-price = 0
+price = 50
 
 [costume.chef]
 name = "Chef Bee"
 description = "Taking a break from blundering the high seas to brush up on his Te Reo"
-price = 0
+price = 20
