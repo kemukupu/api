@@ -252,7 +252,7 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Costume'
-  /costume/{name}/image:
+  /costume/image/{name}:
     get:
       summary: Returns an image blob representing this costume
       parameters:

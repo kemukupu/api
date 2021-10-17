@@ -573,6 +573,22 @@ async fn unlock_costume(
     .build();
 }
 
+#[get("/api/v1/costume")]
+fn get_costume_information() -> models::Response {
+    let data: Vec<models::Costume> = COSTUMES.values().cloned().collect(); 
+    return models::ResponseBuilder {
+        data: data,
+        status: Status::Ok
+    }.build()
+}
+
+#[get("/api/v1/costume/image/<costume_id>")]
+async fn get_costume_image(costume_id: String) -> Option<NamedFile> {
+    NamedFile::open(Path::new(&format!("static/costume/{}", costume_id)))
+        .await
+        .ok()
+}
+
 /// Serve docs about the api
 #[get("/api/docs")]
 async fn docs() -> NamedFile {
@@ -634,6 +650,8 @@ fn rocket() -> _ {
                 add_score,
                 unlock_costume,
                 get_costumes,
+                get_costume_information,
+                get_costume_image,
                 website_resource,
                 health,
                 not_found_stop_point,
