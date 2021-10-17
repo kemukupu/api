@@ -44,8 +44,6 @@ paths:
                     type: string
                     example: User Not Found
                     description: Provides some helpful information about what was wrong about your request.
-      tags:
-        - Authentication Required
     delete:
       summary: Delete a user from the database.
       description: This will delete the user of the token you provide.
@@ -90,8 +88,6 @@ paths:
                     type: string
                     example: User Not Found
                     description: Provides some helpful information about what was wrong about your request.
-      tags:
-        - Authentication Required
   /student/login:
     post:
       summary: Login and get a token to use for authenticated requests.
@@ -125,8 +121,6 @@ paths:
                     type: string
                     example: Incorrect Password or Username
                     description: The password or username for this user is incorrect, they should be prompted to try again.
-      tags:
-        - Public Endpoints
   /student/create:
     post:
       summary: Create a new user account.
@@ -159,9 +153,136 @@ paths:
                   data:
                     type: string
                     example: Password Too Short
-          
-      tags:
-        - Public Endpoints
+  /student/costumes:
+    get:
+      summary: Get the users costumes from the api.
+      description: Attempt to collect this users unlocked costumes from the api, automatically determines the user from the attached authorisation header.
+      parameters:
+        - in: header
+          name: Authorisation
+          schema:
+            type: string
+            example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+      responses:
+        '200':
+          description: Successfully collected users costumes from the database.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: 
+                      type: integer
+                      example: [1,2,3,4,5]
+        '401':
+          description: Provided JWT token is invalid, the user should login again.
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Invalid Auth Token
+    post:
+      summary: Request the api to unlock a costume for this user.
+      description: Attempt to unlock the costume for this user, note that this may fail.
+      parameters:
+        - in: header
+          name: Authorisation
+          schema:
+            type: string
+            example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+      requestBody:
+        description: The body containing the costume to buy from the user.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: pirate      
+        required: true
+      responses:
+        '200':
+          description: Succesfully unlocked this costume for the user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: ""
+        '400':
+          description: Unable to purchase due to bad request, or not enough money.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Unable to purchase, not enough funds!
+        '401':
+          description: Provided JWT token is invalid, the user should login again.
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Invalid Auth Token
+  /costume:
+    get:
+      summary: Get list of costumes and prices from the api
+      responses:
+        '200':
+          description: A list of all costumes available for purchase.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Costume'
+  /costume/image/{name}:
+    get:
+      summary: Returns an image blob representing this costume
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: The name of the image to request for this costume!
+      responses:
+        '200':
+          description: Successfully found image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Unable to find requested costume!
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Image does not exist
+
+
+
   /scores:
     get:
       summary: Get scores from the api.
@@ -199,8 +320,6 @@ paths:
                     type: array
                     items: 
                       $ref: '#/components/schemas/Score'
-      tags:
-        - Public Endpoints
     post:
       summary: Save a score to the api.
       description: Automatically uses the JWT provided as the account to save the score under.
@@ -237,7 +356,7 @@ paths:
                 properties:
                   data:
                     type: string
-                    example: "Invalid Auth Token"
+                    example: Invalid Auth Token
         '400':
           description: Unable to parse provided body.
           content:
@@ -248,9 +367,6 @@ paths:
                   data:
                     type: string
                     example: "Score not found in body"
-      tags:
-        - Authentication Required
-  
 info:
   description: An API to interact with the Kemu Kupu database.
   version: "1.0.0"
@@ -279,18 +395,21 @@ components:
       type: object
       required:
         - score
+        - num_stars
       properties:
         score:
           type: integer
           example: 45
+        num_stars:
+          type: integer
+          example: 45
     Score:
       type: object
-      required:
-        - score
-        - usr
-        - usr_id
       properties:
         score:
+          type: integer
+          example: 45
+        num_stars:
           type: integer
           example: 45
         usr:
@@ -301,9 +420,6 @@ components:
           example: 289
     User:
       type: object
-      required:
-        - id
-        - usr
       properties:
         id:
           description: The id of this user in the database.
@@ -313,9 +429,32 @@ components:
           description: The username of the provided user.
           type: string
           example: JoeBloggs
-        
-tags:
-  - name: Authentication Required
-    description: Endpoints tagged with this require an Authorisation header is set.
-  - name: Public Endpoints
-    description: These endpoints do not require any authentication.
+        stars:
+          description: The total number of stars this user has earned.
+          type: integer
+          example: 50
+        num_games:
+          description: The number of games this user has played.
+          type: integer
+          example: 23
+        high_score:
+          description: The highest score this user has achieved.
+          type: integer
+          example: 95
+    Costume:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          description: The name of the costume.
+          type: string
+          example: The Pirate
+        description:
+          description: A short story about the costume.
+          type: string
+          example: This pirate took a break from his exciting life of crime to learn Te Reo!
+        price:
+          description: The cost of this costume in stars.
+          type: integer
+          example: 55

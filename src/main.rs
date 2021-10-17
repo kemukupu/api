@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use models::ResponseBuilder;
@@ -20,25 +21,58 @@ use rocket::http::Status;
 use rocket::response::Redirect;
 use rocket::serde::json::Json;
 use std::env::var;
+use toml::value::Table;
 /// Database connection
 #[rocket_sync_db_pools::database("postgres_database")]
 struct UsersDbConn(diesel::PgConnection);
 
-// Thinking about endpoints
-// GET api/v1/student/{id}, request information about a user, must contain AUTH header with their token.
-// POST api/v1/student/login, to request an access (JWT) token, must attach login details in body
-// DELETE api/v1/student/{id}, to remove a user
-// GET api/v1/highscores, to request a list of all the high scores
-// POST /api/va/highscore, to add a new score - must contain information about the user
-
 // TODO General todos
 // Move common DB requests (such as looking up a user) into a framework under common.rs to avoid duplicate code.
+// Modify get requests to support 500 server-failure errors if the db is unable to be accessed.
 
 lazy_static! {
     static ref JWT_SECRET: String = var("JWT_SECRET").unwrap();
     static ref JWT_EXPIRY_TIME_HOURS: usize =
         var("JWT_EXPIRY_TIME_HOURS").unwrap().parse().unwrap();
     static ref BROWSER_BASE_URL: String = var("BROWSER_BASE_URL").unwrap();
+    static ref COSTUMES: HashMap<String, models::Costume> = {
+        //Load data from file, and parse as toml
+        let data = std::fs::read_to_string("./costume.toml").expect("Unable to find `./costume.toml`");
+        let f = data.parse::<toml::Value>().expect("Unable to parse `./costume.toml`");
+
+        //Load global settings and costume data
+        //TODO
+        let _global: &Table = f.get("global")
+            .expect("Unable to find [global] tag in `./costume.toml`")
+            .as_table()
+            .expect("Unable to find [global] tag in `./costume.toml`");
+
+        let costumes: &Table = f.get("costume")
+            .expect("Unable to parse `./costume.toml`, no costumes provided!")
+            .as_table()
+            .expect("Unable to find [global] tag in `./costume.toml`");
+
+        //Validate all global settings are present
+        //TODO
+
+        //Parse each costume into hashmap
+        let mut map: HashMap<String, models::Costume> = HashMap::default();
+        let keys: Vec<&String> = costumes.keys().into_iter().collect();
+        for key in keys {
+            let costume = costumes.get(key).expect(&format!("Unable to parse costume {} from `./costume.toml`, is it correctly formatted?", key)).as_table().expect(&format!("Unable to parse {} as table from `./costume.toml`", key));
+            let name: String = costume.get("name").expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).as_str().expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).to_owned();
+            let description: String = costume.get("description").expect(&format!("Unable to parse description for costume {} from `./costume.toml`", key)).as_str().expect(&format!("Unable to parse name for costume {} from `./costume.toml`", key)).to_owned();
+            let price: usize = costume.get("price").expect(&format!("Unable to parse price for costume {} from `./costume.toml`", key)).as_integer().expect(&format!("Unable to parse description for costume {} from `./costume.toml`", key)) as usize;
+
+            map.insert(name.clone(), models::Costume {
+                name,
+                description,
+                price,
+            });
+        }
+
+        return map;
+    };
 }
 
 /// Return information about the student
@@ -204,6 +238,7 @@ async fn create_student(
     let new_user = models::UserCredentials {
         usr: new_user.usr,
         pwd: hashed_password,
+        costumes: vec!["default".into()],
     };
 
     //Save account in db
@@ -290,26 +325,26 @@ async fn get_scores(
 ) -> models::Response {
     //Set the defaults for these values, and ensure non-negative
     let offset: i64 = offset.unwrap_or(0).abs();
-    let limit: i64 = limit.unwrap_or(10).abs(); 
+    let limit: i64 = limit.unwrap_or(10).abs();
 
     if id.is_none() && usr.is_some() {
         //Load the id of the user suggested
-        use crate::schema::users::dsl::{usr as usr_struct, users};
+        use crate::schema::users::dsl::{users, usr as usr_struct};
         let r: Option<crate::models::User> = conn
-        .run(move |c| {
-            let r = users
-                .filter(usr_struct.eq(usr.unwrap()))
-                .limit(1)
-                .load::<crate::models::User>(c);
-            if let Ok(mut v) = r {
-                if v.is_empty() {
-                    return None;
+            .run(move |c| {
+                let r = users
+                    .filter(usr_struct.eq(usr.unwrap()))
+                    .limit(1)
+                    .load::<crate::models::User>(c);
+                if let Ok(mut v) = r {
+                    if v.is_empty() {
+                        return None;
+                    }
+                    return Some(v.remove(0));
                 }
-                return Some(v.remove(0));
-            }
-            return None;
-        })
-        .await;
+                return None;
+            })
+            .await;
         if let Some(found_user) = r {
             id = Some(found_user.id);
         } else {
@@ -317,11 +352,12 @@ async fn get_scores(
             return models::ResponseBuilder {
                 data,
                 status: Status::Ok,
-            }.build()
+            }
+            .build();
         }
     }
 
-    use crate::schema::scores::dsl::{usr_id as struct_id};
+    use crate::schema::scores::dsl::usr_id as struct_id;
     let r: Result<Vec<models::Score>, diesel::result::Error> = conn
         .run(move |c| {
             let mut db_request = crate::schema::scores::table.into_boxed();
@@ -332,9 +368,9 @@ async fn get_scores(
                 .limit(limit)
                 .offset(offset)
                 .load::<crate::models::Score>(c)
-        }
-    ).await;
-    
+        })
+        .await;
+
     if let Err(e) = r {
         return models::ResponseBuilder {
             data: format!("Failed to query the server due to error {}", e.to_string()),
@@ -349,7 +385,8 @@ async fn get_scores(
         return models::ResponseBuilder {
             data,
             status: Status::Ok,
-        }.build()
+        }
+        .build();
     }
     models::ResponseBuilder {
         data: r,
@@ -395,6 +432,163 @@ async fn add_score(
     .build();
 }
 
+#[get("/api/v1/student/costumes")]
+async fn get_costumes(token: models::Claims, conn: UsersDbConn) -> models::Response {
+    //Load the user requested
+    let search_id = token.sub;
+    use crate::schema::users::dsl::*;
+    let r: Result<Option<crate::models::User>, diesel::result::Error> = conn
+        .run(move |c| {
+            let r = users
+                .filter(id.eq(search_id))
+                .limit(1)
+                .load::<crate::models::User>(c);
+            return match r {
+                Ok(mut v) => {
+                    if v.is_empty() {
+                        return Ok(None);
+                    }
+                    Ok(Some(v.remove(0)))
+                }
+                Err(e) => Err(e),
+            };
+        })
+        .await;
+
+    //Check request is ok
+    if let Err(e) = r {
+        return models::ResponseBuilder {
+            data: format!("Failed to query the server due to error {}", e.to_string()),
+            status: Status::InternalServerError,
+        }
+        .build();
+    }
+    let r = r.unwrap();
+
+    //Check user exists
+    if r.is_none() {
+        return models::ResponseBuilder {
+            data: "User not found in database!",
+            status: Status::NotFound,
+        }
+        .build();
+    }
+
+    //Return value
+    return models::ResponseBuilder {
+        data: r.unwrap().costumes,
+        status: Status::Ok,
+    }
+    .build();
+}
+
+#[post(
+    "/api/v1/student/costumes",
+    data = "<costume>",
+    format = "application/json"
+)]
+async fn unlock_costume(
+    token: models::Claims,
+    conn: UsersDbConn,
+    costume: Json<models::UnlockCostume>,
+) -> models::Response {
+    let costume = costume.into_inner();
+    //Check requested costume exists
+    if !COSTUMES.contains_key(&costume.name) {
+        return models::ResponseBuilder {
+            data: "Costume does not exist",
+            status: Status::BadRequest,
+        }
+        .build();
+    }
+
+    //Load costume
+    let costume = COSTUMES.get(&costume.name).unwrap();
+
+    //Load all scores from this user, and tally them to get their total score
+    let search_id = token.sub;
+    use crate::schema::scores::dsl::{scores, usr_id};
+    let r: Result<Vec<crate::models::Score>, diesel::result::Error> = conn
+        .run(move |c| {
+            scores
+                .filter(usr_id.eq(search_id))
+                .load::<crate::models::Score>(c)
+        })
+        .await;
+
+    //Check request is ok
+    if let Err(e) = r {
+        return models::ResponseBuilder {
+            data: format!("Failed to query the server due to error {}", e.to_string()),
+            status: Status::InternalServerError,
+        }
+        .build();
+    }
+
+    //Tally their score
+    let mut score = 0;
+    for s in r.unwrap() {
+        score += s.num_stars;
+    }
+
+    //Validate that they have enough stars
+    if score < costume.price as i32 {
+        return models::ResponseBuilder {
+            data: "Costume is too expensive",
+            status: Status::BadRequest,
+        }
+        .build();
+    }
+
+    //Modify that user with their new costume!
+    let r = conn
+        .run(move |c| {
+            //HACK currently diesel does not support this sort of array manipulation, but it will come eventually!
+            let cmd = format!("UPDATE users SET costumes = (select array_agg(distinct e) from unnest(costumes || '{{{}}}') e) WHERE id={} RETURNING *;", &costume.name, &token.sub);
+            diesel::sql_query(&cmd).load::<crate::models::User>(c)
+        })
+        .await;
+
+    if let Err(e) = r {
+        return models::ResponseBuilder {
+            data: format!("Failed to query the server due to error {}", e.to_string()),
+            status: Status::InternalServerError,
+        }
+        .build();
+    }
+
+    let r = r.unwrap();
+    if r.is_empty() {
+        return models::ResponseBuilder {
+            data: format!("Failed to query the server due to being unable to find user! Was it deleted while this query was running?"),
+            status: Status::InternalServerError,
+        }
+        .build();
+    }
+
+    return models::ResponseBuilder {
+        data: r.get(0),
+        status: Status::Ok,
+    }
+    .build();
+}
+
+#[get("/api/v1/costume")]
+fn get_costume_information() -> models::Response {
+    let data: Vec<models::Costume> = COSTUMES.values().cloned().collect(); 
+    return models::ResponseBuilder {
+        data: data,
+        status: Status::Ok
+    }.build()
+}
+
+#[get("/api/v1/costume/image/<costume_id>")]
+async fn get_costume_image(costume_id: String) -> Option<NamedFile> {
+    NamedFile::open(Path::new(&format!("static/costume/{}", costume_id)))
+        .await
+        .ok()
+}
+
 /// Serve docs about the api
 #[get("/api/docs")]
 async fn docs() -> NamedFile {
@@ -422,6 +616,12 @@ async fn website_resource(file: PathBuf) -> Option<NamedFile> {
     NamedFile::open(Path::new("static/").join(file)).await.ok()
 }
 
+/// Endpoint mostly used during development, is a final catch-all to prevent infinite loops.
+#[get("/notfound")]
+fn not_found_stop_point() -> &'static str {
+    "Route Not Found"
+}
+
 /// Handle any 404's
 #[catch(404)]
 async fn not_found() -> Redirect {
@@ -430,6 +630,12 @@ async fn not_found() -> Redirect {
 
 #[launch]
 fn rocket() -> _ {
+    //Initalize all globals
+    lazy_static::initialize(&JWT_SECRET);
+    lazy_static::initialize(&JWT_EXPIRY_TIME_HOURS);
+    lazy_static::initialize(&BROWSER_BASE_URL);
+    lazy_static::initialize(&COSTUMES);
+    //Launch rocket
     rocket::build()
         .register("/", catchers![not_found])
         .mount(
@@ -442,26 +648,14 @@ fn rocket() -> _ {
                 delete_student,
                 get_scores,
                 add_score,
+                unlock_costume,
+                get_costumes,
+                get_costume_information,
+                get_costume_image,
                 website_resource,
                 health,
+                not_found_stop_point,
             ],
         )
         .attach(UsersDbConn::fairing())
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::rocket;
-    use rocket::local::blocking::Client;
-    use rocket::http::Status;
-
-    #[test]
-    fn test_health() {
-        let client = Client::tracked(rocket()).expect("valid rocket instance");
-        let response = client.get(uri!("/api/health")).dispatch();
-
-        assert_eq!(response.status(), Status::Ok);
-        assert_eq!(response.into_string(), Some("{\"data\": \"Online\"}".into()));
-    }
 }
