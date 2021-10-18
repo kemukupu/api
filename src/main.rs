@@ -878,6 +878,83 @@ async fn change_nickname(token: Result<models::Claims, models::Response>, new_ni
     .build();
 }
 
+#[post("/api/v1/student/reset")]
+async fn reset_statistics(token: Result<models::Claims, models::Response>, conn: UsersDbConn) -> models::Response {
+    if let Err(e) = token {
+        return e;
+    }
+    let token = token.unwrap();
+    //Check the user exists
+    use crate::schema::users::dsl::*;
+    let usr_id = token.sub.clone();
+    let r: Option<crate::models::User> = conn
+        .run(move |c| {
+            let r = users
+                .filter(id.eq(usr_id))
+                .limit(1)
+                .load::<crate::models::User>(c);
+            if let Ok(mut v) = r {
+                if v.is_empty() {
+                    return None;
+                }
+                return Some(v.remove(0));
+            }
+            return None;
+        })
+        .await;
+
+    if r.is_none() {
+        return models::ResponseBuilder {
+            data: "User Not Found",
+            status: Status::BadRequest,
+        }
+        .build();
+    }
+
+    //Delete all of this users scores from the db
+    {
+        use crate::schema::scores::dsl::*;
+        let subject = token.sub;
+        let r: Result<_, diesel::result::Error> = conn
+            .run(move |c| diesel::delete(scores.filter(usr_id.eq(subject))).execute(c))
+            .await;
+    
+        if let Err(e) = r {
+            return models::ResponseBuilder {
+                data: format!("Unable to delete users scores due to error {}", e.to_string()),
+                status: Status::InternalServerError,
+            }
+            .build();
+        }
+    }    
+
+    //Reset the costume to only be default, and reset achievements to be empty
+    let r: Result<crate::models::User, diesel::result::Error> = conn
+        .run(move |c| {
+            let achievement: Vec<String> = vec![];
+            let r: Result<crate::models::User, diesel::result::Error> =
+                diesel::update(users.filter(id.eq(token.sub)))
+                    .set((achievements.eq(&achievement), costumes.eq(&vec!["default".to_owned()]), current_costume.eq("default".to_owned())))
+                    .get_result(c);
+            return r;
+        })
+        .await;
+
+    if let Err(e) = r {
+        return models::ResponseBuilder {
+            data: format!("Failed to query the server due to error {}", e.to_string()),
+            status: Status::InternalServerError,
+        }
+        .build();
+    }
+
+    return models::ResponseBuilder {
+        data: r.unwrap(),
+        status: Status::Ok,
+    }
+    .build();
+}
+
 #[get("/api/v1/costume")]
 fn get_costume_information() -> models::Response {
     let data: Vec<models::Costume> = COSTUMES.values().cloned().collect();
@@ -953,6 +1030,7 @@ fn rocket() -> _ {
                 login_student,
                 create_student,
                 delete_student,
+                reset_statistics,
                 change_username,
                 change_nickname,
                 set_user_costume,
