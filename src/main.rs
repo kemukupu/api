@@ -355,6 +355,23 @@ async fn delete_student(
         .build();
     }
 
+    //Delete all of this users scores from the db
+    {
+        use crate::schema::scores::dsl::*;
+        let subject = token.sub;
+        let r: Result<_, diesel::result::Error> = conn
+            .run(move |c| diesel::delete(scores.filter(usr_id.eq(subject))).execute(c))
+            .await;
+    
+        if let Err(e) = r {
+            return models::ResponseBuilder {
+                data: format!("Unable to delete users scores due to error {}", e.to_string()),
+                status: Status::InternalServerError,
+            }
+            .build();
+        }
+    }
+
     //Delete student from db
     let r: Result<crate::models::User, diesel::result::Error> = conn
         .run(move |c| diesel::delete(users.filter(id.eq(token.sub))).get_result(c))
@@ -385,7 +402,7 @@ async fn get_scores(
 ) -> models::Response {
     //Set the defaults for these values, and ensure non-negative
     let offset: i64 = offset.unwrap_or(0).abs();
-    let limit: i64 = limit.unwrap_or(10).abs();
+    let limit: i64 = limit.unwrap_or(100).abs();
 
     if id.is_none() && usr.is_some() {
         //Load the id of the user suggested
