@@ -238,13 +238,13 @@ async fn login_student(
 async fn create_student(conn: UsersDbConn, new_user: Json<models::NewUser>) -> models::Response {
     //Check their password meets minimum requirements
     let new_user = new_user.into_inner();
-    if new_user.pwd.len() < 8 {
-        return models::ResponseBuilder {
-            data: "Password Too Short",
-            status: Status::BadRequest,
-        }
-        .build();
-    }
+    // if new_user.pwd.len() < 8 {
+    //     return models::ResponseBuilder {
+    //         data: "Password Too Short",
+    //         status: Status::BadRequest,
+    //     }
+    //     .build();
+    // }
 
     //Check that the username isnt't taken
     use crate::schema::users::dsl::*;
@@ -775,6 +775,107 @@ async fn unlock_achievement(
     .build();
 }
 
+#[post("/api/v1/student/username/<new_username>")]
+async fn change_username(token: Result<models::Claims, models::Response>, new_username: String, conn: UsersDbConn) -> models::Response {
+    if let Err(e) = token {
+        return e;
+    }
+    let token = token.unwrap();
+
+    //Check that the username isn't taken
+    use crate::schema::users::dsl::*;
+    let name = new_username.clone();
+    let r: Option<crate::models::User> = conn
+        .run(move |c| {
+            let r = users
+                .filter(usr.eq(name))
+                .limit(1)
+                .load::<crate::models::User>(c);
+            if let Ok(mut v) = r {
+                if v.is_empty() {
+                    return None;
+                }
+                return Some(v.remove(0));
+            }
+            return None;
+        })
+        .await;
+
+    if r.is_some() {
+        let unwrapped = r.unwrap();
+        if unwrapped.id == token.sub {
+            return models::ResponseBuilder {
+                data: unwrapped,
+                status: Status::Ok,
+            }.build()
+        }
+        return models::ResponseBuilder {
+            data: "Username Taken",
+            status: Status::BadRequest,
+        }
+        .build();
+    }
+
+    //Modify that user with their new username!
+    let r: Result<crate::models::User, diesel::result::Error> = conn
+        .run(move |c| {
+            let r: Result<crate::models::User, diesel::result::Error> =
+                diesel::update(users.filter(id.eq(token.sub)))
+                    .set(usr.eq(&new_username))
+                    .get_result(c);
+            return r;
+        })
+        .await;
+
+    if let Err(e) = r {
+        return models::ResponseBuilder {
+            data: format!("Failed to query the server due to error {}", e.to_string()),
+            status: Status::InternalServerError,
+        }
+        .build();
+    }
+
+    return models::ResponseBuilder {
+        data: r.unwrap(),
+        status: Status::Ok,
+    }
+    .build();
+}
+
+#[post("/api/v1/student/nickname/<new_nickname>")]
+async fn change_nickname(token: Result<models::Claims, models::Response>, new_nickname: String, conn: UsersDbConn) -> models::Response {
+    if let Err(e) = token {
+        return e;
+    }
+    let token = token.unwrap();
+
+    //Modify that user with their new nickname!
+    use crate::schema::users::dsl::*;
+    let r: Result<crate::models::User, diesel::result::Error> = conn
+        .run(move |c| {
+            let r: Result<crate::models::User, diesel::result::Error> =
+                diesel::update(users.filter(id.eq(token.sub)))
+                    .set(nickname.eq(&new_nickname))
+                    .get_result(c);
+            return r;
+        })
+        .await;
+
+    if let Err(e) = r {
+        return models::ResponseBuilder {
+            data: format!("Failed to query the server due to error {}", e.to_string()),
+            status: Status::InternalServerError,
+        }
+        .build();
+    }
+
+    return models::ResponseBuilder {
+        data: r.unwrap(),
+        status: Status::Ok,
+    }
+    .build();
+}
+
 #[get("/api/v1/costume")]
 fn get_costume_information() -> models::Response {
     let data: Vec<models::Costume> = COSTUMES.values().cloned().collect();
@@ -850,6 +951,8 @@ fn rocket() -> _ {
                 login_student,
                 create_student,
                 delete_student,
+                change_username,
+                change_nickname,
                 set_user_costume,
                 get_scores,
                 add_score,
