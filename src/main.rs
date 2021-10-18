@@ -100,7 +100,7 @@ lazy_static! {
                 .as_table()
                 .expect(&format!("Unable to parse {} as table from `./achievement.toml`", key));
             let display_name: String = achievement
-                .get("name")
+                .get("display_name")
                 .expect(&format!("Unable to parse name for achievement {} from `./achievement.toml`", key))
                 .as_str()
                 .expect(&format!("Unable to parse name for achievement {} from `./achievement.toml`", key))
