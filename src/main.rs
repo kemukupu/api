@@ -775,8 +775,9 @@ async fn unlock_achievement(
     .build();
 }
 
-#[post("/api/v1/student/username/<new_username>")]
-async fn change_username(token: Result<models::Claims, models::Response>, new_username: String, conn: UsersDbConn) -> models::Response {
+#[post("/api/v1/student/username", data = "<new_username>", format = "application/json")]
+async fn change_username(token: Result<models::Claims, models::Response>, new_username: Json<models::UnlockCostume>, conn: UsersDbConn) -> models::Response {
+    let new_username = new_username.into_inner();
     if let Err(e) = token {
         return e;
     }
@@ -784,7 +785,7 @@ async fn change_username(token: Result<models::Claims, models::Response>, new_us
 
     //Check that the username isn't taken
     use crate::schema::users::dsl::*;
-    let name = new_username.clone();
+    let name = new_username.name.clone();
     let r: Option<crate::models::User> = conn
         .run(move |c| {
             let r = users
@@ -821,7 +822,7 @@ async fn change_username(token: Result<models::Claims, models::Response>, new_us
         .run(move |c| {
             let r: Result<crate::models::User, diesel::result::Error> =
                 diesel::update(users.filter(id.eq(token.sub)))
-                    .set(usr.eq(&new_username))
+                    .set(usr.eq(&new_username.name))
                     .get_result(c);
             return r;
         })
@@ -842,8 +843,9 @@ async fn change_username(token: Result<models::Claims, models::Response>, new_us
     .build();
 }
 
-#[post("/api/v1/student/nickname/<new_nickname>")]
-async fn change_nickname(token: Result<models::Claims, models::Response>, new_nickname: String, conn: UsersDbConn) -> models::Response {
+#[post("/api/v1/student/nickname", data = "<new_nickname>", format = "application/json")]
+async fn change_nickname(token: Result<models::Claims, models::Response>, new_nickname: Json<models::UnlockCostume>, conn: UsersDbConn) -> models::Response {
+    let new_nickname = new_nickname.into_inner();
     if let Err(e) = token {
         return e;
     }
@@ -855,7 +857,7 @@ async fn change_nickname(token: Result<models::Claims, models::Response>, new_ni
         .run(move |c| {
             let r: Result<crate::models::User, diesel::result::Error> =
                 diesel::update(users.filter(id.eq(token.sub)))
-                    .set(nickname.eq(&new_nickname))
+                    .set(nickname.eq(&new_nickname.name))
                     .get_result(c);
             return r;
         })
