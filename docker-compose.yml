@@ -14,14 +14,8 @@ services:
       - --providers.docker.exposedbydefault=false
       - --providers.file.filename=/etc/traefik/traefik-dynamic.yml
 
-      # Let's Encrypt
-      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
-      - --certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL}
-      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-
       # Listen for https on 443, and http on 80 which just redirects to https
       - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entryPoint.to=websecure
       - --entrypoints.web.http.redirections.entryPoint.scheme=https
