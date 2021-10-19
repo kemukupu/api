@@ -53,6 +53,12 @@ display_name = "On top of the world"
 description = "Achieve a high score of 100 points"
 # requirements = { high_score = 100 }
 
+[achievement.speedy40]
+
+[achievement.speedy30]
+
+[achievement.speedy15]
+
 [achievement.unlockAll]
 display_name = "Stylish Kiddo"
 description = "Unlock all costumes"
