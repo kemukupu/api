@@ -54,10 +54,16 @@ description = "Achieve a high score of 100 points"
 # requirements = { high_score = 100 }
 
 [achievement.speedy40]
+display_name = "A Snail's Pace "
+description = "Get 100% on a 40-second timer"
 
 [achievement.speedy30]
+display_name = "Lightning Fingers"
+description = "Get 100% on a 30-second timer"
 
 [achievement.speedy15]
+display_name = "The Flash"
+description = "Get 100% on a 15-second timer"
 
 [achievement.unlockAll]
 display_name = "Stylish Kiddo"

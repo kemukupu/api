@@ -204,6 +204,87 @@ paths:
                   data:
                     type: string
                     example: Invalid Auth Token
+  /student/nickname:
+    post:
+      summary: Request the api to change this users nickname.
+      description: Attempt to change the nickname for this user, note that this may fail.
+      parameters:
+        - in: header
+          name: Authorisation
+          schema:
+            type: string
+            example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+      requestBody:
+        description: The body containing the new nickname to set for this user.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: JoeSmith      
+        required: true
+      responses:
+        '200':
+          description: Succesfully changed this users nickname.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        '401':
+          description: Provided JWT token is invalid, the user should login again.
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Invalid Auth Token
+  /student/reset:
+    post:
+      summary: Request the api to reset this users information.
+      description: Reset all of this users information.
+      parameters:
+        - in: header
+          name: Authorisation
+          schema:
+            type: string
+            example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+      responses:
+        '200':
+          description: Succesfully changed this users nickname.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        '400':
+          description: Unable to find user, was he deleted while this request is running.
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: User Not Found
+        '401':
+          description: Provided JWT token is invalid, the user should login again.
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Invalid Auth Token
   /student/costumes:
     get:
       summary: Get the users costumes from the api.
@@ -287,6 +368,52 @@ paths:
                   data:
                     type: string
                     example: Unable to purchase, not enough funds!
+        '401':
+          description: Provided JWT token is invalid, the user should login again.
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Invalid Auth Token
+  /student/costume/{costumeId}:
+    post:
+      summary: Request the api to set this costume for this user.
+      description: Change the current set costume for this user.
+      parameters:
+        - in: header
+          name: Authorisation
+          schema:
+            type: string
+            example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+        - in: path
+          name: costumeId
+          schema:
+            type: string
+          required: true
+          description: String id of the costume to unlock
+      responses:
+        '200':
+          description: Succesfully set new active costume for this user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        '400':
+          description: Unable to change costume due to a bad request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Costume does not exist
         '401':
           description: Provided JWT token is invalid, the user should login again.
           content: 
@@ -392,8 +519,6 @@ paths:
                   data:
                     type: string
                     example: Invalid Auth Token
-
-
   /scores:
     get:
       summary: Get scores from the api.
