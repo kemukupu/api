@@ -130,7 +130,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserCredentials'
+              $ref: '#/components/schemas/NewUser'
       responses:
         '201':
           description: User account created, and automatically logged in. The returned JWT should be stored and sent with future requests.
@@ -153,6 +153,57 @@ paths:
                   data:
                     type: string
                     example: Password Too Short
+  /student/username:
+    post:
+      summary: Request the api to change this users username.
+      description: Attempt to change the username for this user, note that this may fail.
+      parameters:
+        - in: header
+          name: Authorisation
+          schema:
+            type: string
+            example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+      requestBody:
+        description: The body containing the new username to set for this user.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: JoeSmith      
+        required: true
+      responses:
+        '200':
+          description: Succesfully changed this users username.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        '400':
+          description: Unable to change username.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Username Taken
+        '401':
+          description: Provided JWT token is invalid, the user should login again.
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Invalid Auth Token
   /student/costumes:
     get:
       summary: Get the users costumes from the api.
@@ -174,8 +225,7 @@ paths:
                   data:
                     type: array
                     items: 
-                      type: integer
-                      example: [1,2,3,4,5]
+                      $ref: "#/components/schemas/Costume"
         '401':
           description: Provided JWT token is invalid, the user should login again.
           content: 
@@ -186,6 +236,16 @@ paths:
                   data:
                     type: string
                     example: Invalid Auth Token
+        '404':
+          description: The user wasn't found, this account may have been deleted.
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: User not found in database!
     post:
       summary: Request the api to unlock a costume for this user.
       description: Attempt to unlock the costume for this user, note that this may fail.
@@ -218,7 +278,7 @@ paths:
                     type: string
                     example: ""
         '400':
-          description: Unable to purchase due to bad request, or not enough money.
+          description: Unable to purchase due to bad request, or not enough money. Or if the costume doesn't exist.
           content:
             application/json:
               schema:
@@ -280,7 +340,58 @@ paths:
                   data:
                     type: string
                     example: Image does not exist
-
+  /student/achievement:
+    post:
+      summary: Request the api to unlock an achievement.
+      description: The api will attempt to unlock a provided achievement for this user.
+      parameters:
+        - in: header
+          name: Authorisation
+          schema:
+            type: string
+            example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjd2MzQ3Mjc3NDIsImlhdCI6MTYzMzg2Mzc0Miwic3ViIjoxfQ.tKN4lS6gy-EQ9K8A1fIIvZ6b37lMs0jc5iYIUuGuJ7o
+      requestBody:
+        description: The body containing the achievement to buy from the user.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: diligence5      
+        required: true
+      responses:
+        '200':
+          description: Succesfully unlocked this achievement for the user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: ""
+        '400':
+          description: Unable to unlock for some reason, likely the achievement doesn't exist.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Achievement does not exist
+        '401':
+          description: Provided JWT token is invalid, the user should login again.
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Invalid Auth Token
 
 
   /scores:
@@ -406,18 +517,38 @@ components:
     Score:
       type: object
       properties:
+        id:
+          description: The id of this score entry.
+          type: integer
+          example: 3
+        usr_id:
+          description: The usr_id of the person who submitted this entry.
+          type: integer
+          example: 289
         score:
+          description: The score this user achieved in this game.
           type: integer
           example: 45
         num_stars:
+          description: The number of stars this user achieved during this game.
           type: integer
           example: 45
+    NewUser:
+      type: object
+      required:
+        - usr
+        - pwd
+        - nickname
+      properties:
         usr:
-          type: string
-          example: JoeBloggs123
-        usr_id:
-          type: integer
-          example: 289
+          description: The username of the user to be created.
+          example: JoeBloggs
+        pwd:
+          description: The password of the new user to be created.
+          example: hunter2
+        nickname:
+          description: The nickname of the user to be displayed to them.
+          example: Jo
     User:
       type: object
       properties:
@@ -429,24 +560,51 @@ components:
           description: The username of the provided user.
           type: string
           example: JoeBloggs
-        stars:
-          description: The total number of stars this user has earned.
-          type: integer
-          example: 50
-        num_games:
-          description: The number of games this user has played.
-          type: integer
-          example: 23
-        high_score:
-          description: The highest score this user has achieved.
-          type: integer
-          example: 95
+        nickname:
+          description: The nickname of the user.
+          type: string
+          example: JoeBloggs
+        current_costume:
+          description: The current costume of the user.
+          type: string
+          example: professer
+        costumes:
+          description: A list of unlocked costumes from the user.
+          type: array
+          items:
+            $ref: "#/components/schemas/Costume"
+        achievements:
+          description: A list of unlocked achievements from this user.
+          type: array
+          items:
+            $ref: "#/components/schemas/Achievement"
+    Achievement:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          description: The internal representation of the achievemnet (string-id).
+          type: string
+          example: diligence5
+        display_name:
+          description: The title of the achievement in a user-friendly format.
+          type: string
+          example: "Mr. Bezos"
+        description:
+          description: A short string explaining what the achievement is.
+          type: string
+          example: "Have 300 stars at one time"
     Costume:
       type: object
       required:
         - name
       properties:
         name:
+          description: The internal representation of the object (string-id).
+          type: string
+          example: default
+        display_name:
           description: The name of the costume.
           type: string
           example: The Pirate
